@@ -40,6 +40,13 @@ const HostessDashboard: React.FC = () => {
   // Mode hors soirée - L'hôtesse n'a accès qu'aux Archives et Réservations
   const isOfflineMode = !currentEvent;
 
+  // 🔄 Rediriger vers live quand une soirée démarre
+  useEffect(() => {
+    if (currentEvent && (activeTab === 'reservations' || activeTab === 'archives')) {
+      setActiveTab('live');
+    }
+  }, [currentEvent]);
+
   // 🔄 Rediriger vers réservations si la soirée se termine pendant l'utilisation
   useEffect(() => {
     if (isOfflineMode && (activeTab === 'live' || activeTab === 'history')) {
