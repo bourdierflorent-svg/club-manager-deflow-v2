@@ -1,0 +1,223 @@
+rules_version='2'
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ──────────────────────────────────────────────────
+    // Fonctions utilitaires
+    // ──────────────────────────────────────────────────
+
+    function isNonEmptyString(val) {
+      return val is string && val.size() > 0 && val.size() <= 500;
+    }
+
+    function isValidRole(role) {
+      return role in ['hotesse', 'chef de rang', 'manager', 'gérant', 'viewer', 'barmaid', 'commis'];
+    }
+
+    function isValidClientStatus(s) {
+      return s in ['pending', 'assigned', 'closed'];
+    }
+
+    function isValidOrderStatus(s) {
+      return s in ['pending', 'served', 'settled', 'cancelled'];
+    }
+
+    function isValidTableStatus(s) {
+      return s in ['available', 'occupied', 'served', 'to_pay', 'disabled'];
+    }
+
+    function isValidReservationStatus(s) {
+      return s in ['en_attente', 'venu', 'confirme', 'no_show', 'recale'];
+    }
+
+    function isValidEventStatus(s) {
+      return s in ['active', 'closed'];
+    }
+
+    function isValidTableType(t) {
+      return t in ['standard', 'vip', 'carre'];
+    }
+
+    function isValidPriority(p) {
+      return p in ['normal', 'high', 'critical'];
+    }
+
+    // ──────────────────────────────────────────────────
+    // USERS – comptes utilisateurs avec rôles et PINs
+    // ──────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if true;
+
+      allow create: if request.resource.data.keys().hasAll(['firstName', 'lastName', 'role', 'pin', 'isActive'])
+                    && isNonEmptyString(request.resource.data.firstName)
+                    && isNonEmptyString(request.resource.data.lastName)
+                    && isValidRole(request.resource.data.role)
+                    && request.resource.data.pin is string
+                    && request.resource.data.pin.size() == 4
+                    && request.resource.data.isActive is bool;
+
+      allow update: if request.resource.data.keys().hasAll(['firstName', 'lastName', 'role', 'pin', 'isActive'])
+                    && isNonEmptyString(request.resource.data.firstName)
+                    && isNonEmptyString(request.resource.data.lastName)
+                    && isValidRole(request.resource.data.role)
+                    && request.resource.data.pin is string
+                    && request.resource.data.pin.size() == 4
+                    && request.resource.data.isActive is bool;
+
+      allow delete: if true;
+    }
+
+    // ──────────────────────────────────────────────────
+    // PRODUCTS – catalogue de boissons
+    // ──────────────────────────────────────────────────
+    match /products/{productId} {
+      allow read: if true;
+
+      allow create: if request.resource.data.keys().hasAll(['name', 'category', 'prices'])
+                    && isNonEmptyString(request.resource.data.name)
+                    && isNonEmptyString(request.resource.data.category)
+                    && request.resource.data.prices is map;
+
+      allow update: if request.resource.data.name is string
+                    && request.resource.data.category is string
+                    && request.resource.data.prices is map;
+
+      allow delete: if true;
+    }
+
+    // ──────────────────────────────────────────────────
+    // RESERVATIONS – réservations clients
+    // ──────────────────────────────────────────────────
+    match /reservations/{reservationId} {
+      allow read: if true;
+
+      allow create: if request.resource.data.keys().hasAll(['clientName', 'businessProvider', 'date', 'status', 'createdAt', 'createdById', 'createdByName'])
+                    && isNonEmptyString(request.resource.data.clientName)
+                    && request.resource.data.businessProvider is string
+                    && isNonEmptyString(request.resource.data.date)
+                    && isValidReservationStatus(request.resource.data.status);
+
+      allow update: if isValidReservationStatus(request.resource.data.status)
+                    && request.resource.data.clientName is string
+                    && request.resource.data.date is string;
+
+      allow delete: if true;
+    }
+
+    // ──────────────────────────────────────────────────
+    // AUDIT LOGS – journal d'actions (immutable)
+    // ──────────────────────────────────────────────────
+    match /auditLogs/{logId} {
+      allow read: if true;
+
+      allow create: if request.resource.data.keys().hasAll(['eventId', 'timestamp', 'userId', 'userName', 'action', 'details', 'priority'])
+                    && isValidPriority(request.resource.data.priority)
+                    && isNonEmptyString(request.resource.data.action)
+                    && isNonEmptyString(request.resource.data.userId);
+
+      // Les logs d'audit ne doivent jamais être modifiés ni supprimés
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ──────────────────────────────────────────────────
+    // EVENTS – soirées (avec sous-collections)
+    // ──────────────────────────────────────────────────
+    match /events/{eventId} {
+      allow read: if true;
+
+      allow create: if request.resource.data.keys().hasAll(['date', 'startTime', 'status', 'totalRevenue'])
+                    && isValidEventStatus(request.resource.data.status)
+                    && request.resource.data.totalRevenue is number;
+
+      allow update: if isValidEventStatus(request.resource.data.status)
+                    && request.resource.data.totalRevenue is number;
+
+      // Suppression uniquement des soirées clôturées
+      allow delete: if resource.data.status == 'closed';
+
+      // ── TABLES (sous-collection) ──
+      match /tables/{tableId} {
+        allow read: if true;
+
+        allow create: if request.resource.data.keys().hasAll(['number', 'capacity', 'type', 'status'])
+                      && isValidTableStatus(request.resource.data.status)
+                      && request.resource.data.capacity is number
+                      && isValidTableType(request.resource.data.type);
+
+        allow update: if isValidTableStatus(request.resource.data.status)
+                      && request.resource.data.capacity is number;
+
+        allow delete: if true;
+      }
+
+      // ── CLIENTS (sous-collection) ──
+      match /clients/{clientId} {
+        allow read: if true;
+
+        allow create: if request.resource.data.keys().hasAll(['name', 'status', 'totalSpent'])
+                      && isNonEmptyString(request.resource.data.name)
+                      && isValidClientStatus(request.resource.data.status)
+                      && request.resource.data.totalSpent is number;
+
+        allow update: if isValidClientStatus(request.resource.data.status)
+                      && request.resource.data.totalSpent is number
+                      && request.resource.data.name is string;
+
+        allow delete: if true;
+      }
+
+      // ── ORDERS (sous-collection) ──
+      match /orders/{orderId} {
+        allow read: if true;
+
+        allow create: if request.resource.data.keys().hasAll(['eventId', 'clientId', 'tableId', 'waiterId', 'status', 'items', 'totalAmount', 'createdAt'])
+                      && isValidOrderStatus(request.resource.data.status)
+                      && request.resource.data.items is list
+                      && request.resource.data.totalAmount is number
+                      && isNonEmptyString(request.resource.data.waiterId);
+
+        allow update: if isValidOrderStatus(request.resource.data.status)
+                      && request.resource.data.totalAmount is number;
+
+        allow delete: if true;
+      }
+    }
+
+    // ──────────────────────────────────────────────────
+    // CAISSES – données de caisse par soirée
+    // ──────────────────────────────────────────────────
+    match /caisses/{eventId} {
+      allow read: if true;
+
+      allow create: if request.resource.data.eventId is string
+                    && request.resource.data.vestiaire is number
+                    && request.resource.data.caSalle is number
+                    && request.resource.data.bar is number;
+
+      allow update: if request.resource.data.vestiaire is number
+                    && request.resource.data.caSalle is number
+                    && request.resource.data.bar is number;
+
+      allow delete: if true;
+    }
+
+    // ──────────────────────────────────────────────────
+    // INVOICES – factures
+    // ──────────────────────────────────────────────────
+    match /invoices/{invoiceId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+
+    // ──────────────────────────────────────────────────
+    // Tout le reste est bloqué par défaut
+    // ──────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
