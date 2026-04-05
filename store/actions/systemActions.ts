@@ -2,7 +2,7 @@ import type { StoreGet, StoreSet } from '../types';
 import { OrderStatus } from '../../src/types';
 import {
   createSession, clearSession,
-  generateShortId, secureLog, secureError
+  secureLog, secureError
 } from '../../src/utils';
 import { supabase } from '../../supabaseConfig';
 import { logSync } from '../helpers';
@@ -39,7 +39,7 @@ export const createSystemActions = (set: StoreSet, get: StoreGet) => ({
       await supabase.from('audit_logs').insert({
         club_id: clubId,
         timestamp: new Date().toISOString(),
-        user_id: uId || '',
+        user_id: uId || null,
         user_name: uN || '',
         action: a || '',
         details: d || '',
@@ -50,13 +50,6 @@ export const createSystemActions = (set: StoreSet, get: StoreGet) => ({
       secureError("[ERROR] [logAction] Error:", e);
     }
   },
-
-  addNotification: (n: any) => {
-    const notif = { ...n, id: generateShortId('notif'), timestamp: new Date().toISOString() };
-    set((state: any) => ({ notifications: [notif, ...state.notifications].slice(0, 5) }));
-  },
-
-  removeNotification: (id: string) => set((state: any) => ({ notifications: state.notifications.filter((n: any) => n.id !== id) })),
 
   getSettledRevenue: (wId?: string) => get().clients.filter(c => c.status === 'closed' && (!wId || c.waiterId === wId)).reduce((acc, c) => acc + c.totalSpent, 0),
 

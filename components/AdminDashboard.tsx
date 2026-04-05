@@ -411,7 +411,7 @@ const AdminDashboard: React.FC = () => {
     if (editingUser) { 
       updateUser({ ...editingUser, ...userData }); 
     } else { 
-      addUser({ id: generateShortId('user'), ...userData } as User); 
+      addUser({ ...userData } as User);
     }
     setShowUserModal(false); 
     setEditingUser(null); 

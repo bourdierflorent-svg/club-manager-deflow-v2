@@ -2,7 +2,7 @@ import type { StoreGet, StoreSet } from '../types';
 import {
   TableStatus, OrderStatus, ReservationStatus, HubCustomerSnapshot, HubApporteurSnapshot
 } from '../../src/types';
-import { generateShortId, validateName, secureLog, secureError, writeVisitToHub, createHubCustomerAuto } from '../../src/utils';
+import { validateName, secureLog, secureError, writeVisitToHub, createHubCustomerAuto } from '../../src/utils';
 import { supabase } from '../../supabaseConfig';
 import { logSync, isTableFreeableBy, recalculateEventRevenue } from '../helpers';
 
@@ -108,47 +108,51 @@ export const createClientActions = (set: StoreSet, get: StoreGet) => ({
         }
       }
 
-      const clientId = generateShortId('client');
-      const reservationId = generateShortId('resa');
-
-      // Create reservation
-      await supabase.from('reservations').insert({
-        id: reservationId,
+      // Create reservation (UUID auto-généré)
+      const { data: insertedResa, error: resaError } = await supabase.from('reservations').insert({
         club_id: clubId,
         event_id: currentEvent.id,
         client_name: nameValidation.sanitized || n.toUpperCase(),
         business_provider: sanitizedProvider,
         date: currentEvent.date,
-        time: '',
+        time: null,
         number_of_guests: 1,
-        notes: '',
-        table_preference: '',
-        phone_number: '',
+        notes: null,
+        table_preference: null,
+        phone_number: null,
         status: ReservationStatus.EN_ATTENTE,
         created_at: new Date().toISOString(),
-        created_by_id: currentUser?.id || '',
+        created_by_id: currentUser?.id || null,
         created_by_name: currentUser?.firstName || 'ADMIN',
-      });
+      }).select('id').single();
+      if (resaError || !insertedResa) {
+        secureError("[createClient] Insert reservation failed:", resaError);
+        return;
+      }
+      const reservationId = insertedResa.id;
 
-      // Create client
-      await supabase.from('clients').insert({
-        id: clientId,
+      // Create client (UUID auto-généré)
+      const { error: clientError } = await supabase.from('clients').insert({
         club_id: clubId,
         event_id: currentEvent.id,
         name: nameValidation.sanitized || n.toUpperCase(),
         business_provider: sanitizedProvider,
-        table_id: t || '',
-        waiter_id: w || '',
+        table_id: t || null,
+        waiter_id: w || null,
         status: (t && w) ? 'assigned' : 'pending',
         total_spent: 0,
         arrival_at: new Date().toISOString(),
-        created_by_id: currentUser?.id || '',
-        created_by_name: currentUser?.firstName || '',
+        created_by_id: currentUser?.id || null,
+        created_by_name: currentUser?.firstName || null,
         from_reservation: true,
         reservation_id: reservationId,
         customer_id: finalHubCustomerId || null,
         apporteur_id: apporteurId || null,
       });
+      if (clientError) {
+        secureError("[createClient] Insert client failed:", clientError);
+        return;
+      }
 
       if (t) {
         await supabase.from('event_tables').update({ status: TableStatus.OCCUPIED }).eq('id', t);

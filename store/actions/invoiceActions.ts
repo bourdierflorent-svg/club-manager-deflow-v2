@@ -1,6 +1,6 @@
 import type { StoreGet, StoreSet } from '../types';
 import type { Invoice } from '../../src/types';
-import { generateShortId, secureLog, secureError } from '../../src/utils';
+import { secureLog, secureError } from '../../src/utils';
 import { supabase } from '../../supabaseConfig';
 
 function mapInvoiceFromDb(row: Record<string, unknown>): Invoice {
@@ -48,25 +48,23 @@ export const createInvoiceActions = (set: StoreSet, get: StoreGet) => ({
     const user = get().currentUser;
     if (!clubId) { secureError('[createInvoice] No clubId'); return ''; }
 
-    const invoiceId = generateShortId('inv');
     const payload = {
       ...mapInvoiceToDb(data as Partial<Invoice>, clubId),
-      id: invoiceId,
       created_at: new Date().toISOString(),
       created_by_id: user?.id || '',
       created_by_name: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
     };
 
-    const { error } = await supabase.from('invoices').insert(payload);
-    if (error) {
+    const { data: inserted, error } = await supabase.from('invoices').insert(payload).select('id').single();
+    if (error || !inserted) {
       secureError('[createInvoice] Error:', error);
       return '';
     }
 
-    secureLog(`[createInvoice] Created invoice ${invoiceId}`);
+    secureLog(`[createInvoice] Created invoice ${inserted.id}`);
     // Reload invoices
     await get().loadInvoices();
-    return invoiceId;
+    return inserted.id;
   },
 
   updateInvoice: async (invoiceId: string, data: Partial<Invoice>): Promise<void> => {

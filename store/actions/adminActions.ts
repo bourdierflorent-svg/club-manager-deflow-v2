@@ -11,8 +11,10 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
     const { clubId } = get();
     if (!clubId) return;
     try {
-      await supabase.from('users').upsert({
-        id: u.id,
+      // On ne passe pas d'id si c'est un short-id (ex: "user-abc") ; on laisse Postgres générer un UUID.
+      // Si u.id est déjà un UUID valide (ex: édition), on l'utilise.
+      const isUuid = typeof u.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u.id);
+      const payload: Record<string, unknown> = {
         club_id: clubId,
         first_name: u.firstName,
         last_name: u.lastName,
@@ -20,7 +22,10 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
         role: u.role,
         pin: u.pin,
         is_active: u.isActive !== false,
-      });
+      };
+      if (isUuid) payload.id = u.id;
+      const { error } = await supabase.from('users').upsert(payload);
+      if (error) secureError("[addUser] Error:", error);
     } catch (e) {
       secureError("[ERROR] [addUser] Error:", e);
     }
@@ -131,61 +136,6 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
 
     } catch (e) {
       secureError("[ERROR] [repairArchive] Error:", e);
-    }
-  },
-
-  updateArchivedRecapEntry: async (eventId: string, entryIndex: number, updatedEntry: any) => {
-    try {
-      const { data: eventData, error } = await supabase
-        .from('events')
-        .select('detailed_history')
-        .eq('id', eventId)
-        .single();
-      if (error || !eventData) return;
-      const history = [...((eventData.detailed_history as any[]) || [])];
-      if (entryIndex >= 0 && entryIndex < history.length) {
-        history[entryIndex] = { ...history[entryIndex], ...updatedEntry };
-        await supabase.from('events').update({ detailed_history: history }).eq('id', eventId);
-        set(state => ({
-          pastEvents: state.pastEvents.map(e =>
-            e.id === eventId ? { ...e, detailedHistory: history } : e
-          )
-        }));
-      }
-    } catch (e) {
-      secureError("[ERROR] [updateArchivedRecapEntry] Error:", e);
-    }
-  },
-
-  deleteArchivedRecapEntry: async (eventId: string, entryIndex: number) => {
-    try {
-      const { data: eventData, error } = await supabase
-        .from('events')
-        .select('detailed_history')
-        .eq('id', eventId)
-        .single();
-      if (error || !eventData) return;
-      const history = [...((eventData.detailed_history as any[]) || [])];
-      if (entryIndex >= 0 && entryIndex < history.length) {
-        history.splice(entryIndex, 1);
-        await supabase.from('events').update({ detailed_history: history }).eq('id', eventId);
-        set(state => ({
-          pastEvents: state.pastEvents.map(e =>
-            e.id === eventId ? { ...e, detailedHistory: history } : e
-          )
-        }));
-      }
-    } catch (e) {
-      secureError("[ERROR] [deleteArchivedRecapEntry] Error:", e);
-    }
-  },
-
-  recoverEvent: async (eventId: string) => {
-    try {
-      await supabase.from('events').update({ status: 'active' }).eq('id', eventId);
-      logSync(`Event ${eventId} recovered to active`);
-    } catch (e) {
-      secureError("[ERROR] [recoverEvent] Error:", e);
     }
   },
 
