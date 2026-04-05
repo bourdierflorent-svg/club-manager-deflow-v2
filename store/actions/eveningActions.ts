@@ -3,7 +3,7 @@ import {
   OrderStatus, UserRole, TableStatus,
   ReservationStatus, normalizeReservationStatus
 } from '../../src/types';
-import { generateShortId, getTableZone, secureLog, secureError } from '../../src/utils';
+import { getTableZone, secureLog, secureError } from '../../src/utils';
 import { supabase } from '../../supabaseConfig';
 import { INITIAL_TABLES } from '../../mockData';
 import { logSync, recalculateEventRevenue } from '../helpers';
@@ -40,10 +40,9 @@ export const createEveningActions = (set: StoreSet, get: StoreGet) => ({
 
       const eventId = eventData.id;
 
-      // Copy template tables into event_tables
+      // Copy template tables into event_tables (DB génère l'UUID)
       const templateTables = INITIAL_TABLES;
       const eventTables = templateTables.map(t => ({
-        id: t.id,
         club_id: clubId,
         event_id: eventId,
         number: t.number,
@@ -55,7 +54,10 @@ export const createEveningActions = (set: StoreSet, get: StoreGet) => ({
         zone: t.zone || '',
       }));
 
-      await supabase.from('event_tables').insert(eventTables);
+      const { error: tablesError } = await supabase.from('event_tables').insert(eventTables);
+      if (tablesError) {
+        secureError('[startEvening] event_tables insert failed:', tablesError);
+      }
 
       // Import today's reservations as clients
       const todayReservations = reservations.filter(
@@ -66,31 +68,29 @@ export const createEveningActions = (set: StoreSet, get: StoreGet) => ({
       if (todayReservations.length > 0) {
         logSync(`Import de ${todayReservations.length} reservations en liste clients...`);
 
-        const clientInserts = todayReservations.map(resa => {
-          const clientId = generateShortId('client');
-          return {
-            id: clientId,
-            club_id: clubId,
-            event_id: eventId,
-            name: resa.clientName,
-            business_provider: resa.businessProvider || '',
-            table_id: '',
-            waiter_id: '',
-            status: 'pending',
-            total_spent: 0,
-            created_at: new Date().toISOString(),
-            created_by_id: resa.createdById || '',
-            created_by_name: resa.createdByName || '',
-            from_reservation: true,
-            reservation_id: resa.id,
-            number_of_guests: resa.numberOfGuests || 1,
-            phone_number: resa.phoneNumber || '',
-            notes: resa.notes || '',
-          };
-        });
+        const clientInserts = todayReservations.map(resa => ({
+          club_id: clubId,
+          event_id: eventId,
+          name: resa.clientName,
+          business_provider: resa.businessProvider || '',
+          table_id: null,
+          waiter_id: null,
+          status: 'pending',
+          total_spent: 0,
+          created_at: new Date().toISOString(),
+          from_reservation: true,
+          reservation_id: resa.id,
+          number_of_guests: resa.numberOfGuests || 1,
+          phone_number: resa.phoneNumber || null,
+          notes: resa.notes || null,
+        }));
 
-        await supabase.from('clients').insert(clientInserts);
-        logSync(`${todayReservations.length} reservations importees en liste clients`);
+        const { error: clientsError } = await supabase.from('clients').insert(clientInserts);
+        if (clientsError) {
+          secureError('[startEvening] clients insert failed:', clientsError);
+        } else {
+          logSync(`${todayReservations.length} reservations importees en liste clients`);
+        }
       }
 
       if (user) await get().logAction(user.id, `${user.firstName} ${user.lastName}`, 'EVENT_START', `Debut: ${newEvent.name}${todayReservations.length > 0 ? ` (+${todayReservations.length} resa)` : ''}`);
