@@ -23,7 +23,7 @@ export function useHubApporteurSearch() {
       const { data, error } = await supabase
         .from('apporteurs')
         .select('*')
-        .or(`name.ilike.${pattern},id.ilike.${pattern}`)
+        .ilike('name', pattern)
         .limit(8);
 
       if (error) {

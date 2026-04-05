@@ -23,7 +23,7 @@ export function useHubCustomerSearch() {
       const { data, error } = await supabase
         .from('customers')
         .select('*')
-        .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern},id.ilike.${pattern}`)
+        .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern}`)
         .limit(8);
 
       if (error) {
