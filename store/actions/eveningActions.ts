@@ -78,6 +78,8 @@ export const createEveningActions = (set: StoreSet, get: StoreGet) => ({
           status: 'pending',
           total_spent: 0,
           created_at: new Date().toISOString(),
+          created_by_id: resa.createdById || null,
+          created_by_name: resa.createdByName || null,
           from_reservation: true,
           reservation_id: resa.id,
           number_of_guests: resa.numberOfGuests || 1,

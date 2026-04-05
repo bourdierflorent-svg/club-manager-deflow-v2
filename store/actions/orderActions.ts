@@ -119,7 +119,7 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
 
       if (updatedItems.length === 0) {
         await supabase.from('orders').update({
-          status: OrderStatus.CANCELLED
+          status: OrderStatus.CANCELLED, cancel_reason: 'VIDE PAR MANAGER'
         }).eq('id', orderId);
       } else {
         const newTotal = updatedItems.reduce((acc, i) => acc + i.subtotal, 0);
@@ -168,14 +168,17 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
       if (updatedItems.length === 0) {
         await supabase.from('orders').update({
           status: OrderStatus.CANCELLED,
+          cancel_reason: 'TOUS ARTICLES RETIRES PAR MANAGER',
           items: updatedItems,
-          total_amount: 0
+          total_amount: 0,
+          removed_items: updatedRemovedItems
         }).eq('id', orderId);
       } else {
         const newTotal = updatedItems.reduce((acc, i) => acc + i.subtotal, 0);
         await supabase.from('orders').update({
           items: updatedItems,
-          total_amount: newTotal
+          total_amount: newTotal,
+          removed_items: updatedRemovedItems
         }).eq('id', orderId);
       }
       await recalculateEventRevenue(currentEvent.id);
@@ -243,6 +246,7 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
 
       const { error: updateError } = await supabase.from('orders').update({
         status: OrderStatus.SERVED,
+        validated_at: new Date().toISOString(),
         items: updatedItems,
         total_amount: updatedTotal
       }).eq('id', oId);
@@ -294,7 +298,8 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
       if (!order || order.status === OrderStatus.CANCELLED) return;
       try {
         const { error: cancelError } = await supabase.from('orders').update({
-          status: OrderStatus.CANCELLED
+          status: OrderStatus.CANCELLED,
+          cancel_reason: reason.toUpperCase()
         }).eq('id', oId);
         if (cancelError) {
           secureError('[cancelOrder] Update failed:', cancelError);

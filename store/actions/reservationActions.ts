@@ -48,6 +48,8 @@ export const createReservationActions = (set: StoreSet, get: StoreGet) => ({
         phone_number: phoneValidation.sanitized || null,
         status: ReservationStatus.EN_ATTENTE,
         created_at: new Date().toISOString(),
+        created_by_id: currentUser?.id || null,
+        created_by_name: currentUser?.firstName || 'ADMIN',
       };
 
       const { data: insertedResa, error: resaError } = await supabase
@@ -75,6 +77,8 @@ export const createReservationActions = (set: StoreSet, get: StoreGet) => ({
           total_spent: 0,
           arrival_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
+          created_by_id: currentUser?.id || null,
+          created_by_name: currentUser?.firstName || 'ADMIN',
           from_reservation: true,
           reservation_id: reservationId,
           number_of_guests: data.numberOfGuests || 1,
