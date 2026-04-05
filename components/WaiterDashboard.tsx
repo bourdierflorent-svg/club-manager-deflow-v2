@@ -277,9 +277,10 @@ const WaiterDashboard: React.FC = () => {
 
   const handleAssignSubmit = useCallback(async (tableId: string) => {
     if (!selectedClient || !currentUser) return;
+    // Fermer immédiatement le modal — le résultat est communiqué via notification
+    closeModal();
     const success = await handleAssignClient(selectedClient.id, tableId, currentUser.id);
     if (success) {
-      closeModal();
       setActiveTab('tables');
     }
   }, [selectedClient, currentUser, handleAssignClient, closeModal]);

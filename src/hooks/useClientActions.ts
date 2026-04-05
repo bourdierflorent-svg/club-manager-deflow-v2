@@ -182,7 +182,15 @@ export const useClientActions = (): UseClientActionsReturn => {
       return false;
     }
     
-    return await assignClient(clientId, tableId, waiterId);
+    const success = await assignClient(clientId, tableId, waiterId);
+    if (!success) {
+      addNotification({
+        type: 'error',
+        title: 'ASSIGNATION IMPOSSIBLE',
+        message: 'La table est déjà occupée ou une erreur est survenue',
+      });
+    }
+    return success;
   }, [assignClient, addNotification]);
 
   /**

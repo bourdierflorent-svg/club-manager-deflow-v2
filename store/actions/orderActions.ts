@@ -61,6 +61,17 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
 
     try {
       logSync(`Nouvelle commande pour client ${client.name} (table ${client.tableId})`);
+
+      // Annotation commis/CDR : préfixer la note pour identifier l'auteur
+      const isCommis = currentUser?.role === UserRole.COMMIS;
+      const isCdrOnOtherClient = currentUser?.role === UserRole.WAITER && !isAssignedWaiter;
+      const orderNote = isCommis
+        ? `[COMMIS: ${currentUser?.firstName || 'Commis'}] ${note || ''}`.trim()
+        : isCdrOnOtherClient
+          ? `[CDR: ${currentUser?.firstName || 'CDR'}] ${note || ''}`.trim()
+          : (note || '');
+
+      const nowIso = new Date().toISOString();
       const order = {
         club_id: clubId,
         event_id: currentEvent.id,
@@ -69,13 +80,31 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
         waiter_id: client.waiterId,
         customer_id: client.customerId || null,
         items,
-        note: note || '',
+        note: orderNote,
         total_amount: items.reduce((acc, i) => acc + i.subtotal, 0),
-        status: OrderStatus.PENDING,
-        created_at: new Date().toISOString()
+        status: OrderStatus.SERVED,
+        created_at: nowIso,
+        validated_at: nowIso
       };
-      await supabase.from('orders').insert(order);
+      const { error: insertError } = await supabase.from('orders').insert(order);
+      if (insertError) {
+        secureError("[ERROR] [createOrder] Insert error:", insertError);
+        get().addNotification({ type: 'error', title: 'ERREUR', message: 'Commande non créée' });
+        return;
+      }
 
+      // Auto-validation : table → SERVED
+      if (client.tableId) {
+        const { error: tableErr } = await supabase.from('event_tables')
+          .update({ status: TableStatus.SERVED })
+          .eq('id', client.tableId);
+        if (tableErr) secureError("[WARN] [createOrder] Table status update error:", tableErr);
+      }
+
+      // Recalcul du CA de la soirée
+      await recalculateEventRevenue(currentEvent.id);
+
+      // Auto-confirmation : si le client vient d'une réservation, passer à CONFIRME
       if (client.reservationId) {
         const { allReservations } = get();
         const reservation = allReservations.find(r => r.id === client.reservationId);
@@ -83,21 +112,27 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
         if (reservation) {
           const normalizedStatus = normalizeReservationStatus(reservation.status);
           if (normalizedStatus === ReservationStatus.EN_ATTENTE ||
-              normalizedStatus === ReservationStatus.CONFIRME) {
-            try {
-              await supabase.from('reservations').update({
-                status: ReservationStatus.VENU,
-                confirmed_at: new Date().toISOString()
-              }).eq('id', client.reservationId);
-              logSync(`Reservation ${client.reservationId} -> venu (1ere commande)`);
-            } catch (autoConfirmError) {
-              secureError("[ERROR] [createOrder] Auto-confirm error:", autoConfirmError);
+              normalizedStatus === ReservationStatus.VENU) {
+            const { error: confirmErr } = await supabase.from('reservations').update({
+              status: ReservationStatus.CONFIRME,
+              confirmed_at: nowIso
+            }).eq('id', client.reservationId);
+            if (confirmErr) {
+              secureError("[ERROR] [createOrder] Auto-confirm error:", confirmErr);
+            } else {
+              logSync(`Reservation ${client.reservationId} auto-confirmée (1ère commande)`);
+              get().addNotification({
+                type: 'success',
+                title: 'CLIENT CONFIRMÉ',
+                message: `${client.name} a passé sa première commande`
+              });
             }
           }
         }
       }
     } catch (e) {
       secureError("[ERROR] [createOrder] Error:", e);
+      get().addNotification({ type: 'error', title: 'ERREUR', message: 'Commande non créée' });
     }
   },
 
