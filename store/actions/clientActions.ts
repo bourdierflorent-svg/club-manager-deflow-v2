@@ -291,7 +291,7 @@ export const createClientActions = (set: StoreSet, get: StoreGet) => ({
       logSync(`Desassignation client: ${client.name}`);
 
       await supabase.from('clients').update({
-        table_id: '', waiter_id: '', status: 'pending', linked_table_ids: []
+        table_id: null, waiter_id: null, status: 'pending', linked_table_ids: []
       }).eq('id', clientId);
 
       if (client.tableId) {

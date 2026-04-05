@@ -43,7 +43,7 @@ export const createTableActions = (set: StoreSet, get: StoreGet) => ({
 
       for (const c of allClientsOnTable) {
         if (c.tableId === tableId) {
-          await supabase.from('clients').update({ table_id: '', linked_table_ids: [] }).eq('id', c.id);
+          await supabase.from('clients').update({ table_id: null, linked_table_ids: [] }).eq('id', c.id);
           if (c.linkedTableIds) {
             for (const tId of c.linkedTableIds) {
               const otherOnLinked = clients.filter(cl =>
