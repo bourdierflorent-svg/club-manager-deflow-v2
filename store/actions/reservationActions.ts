@@ -2,7 +2,7 @@ import type { StoreGet, StoreSet } from '../types';
 import type { CreateReservationData, Reservation } from '../../src/types';
 import { ReservationStatus, normalizeReservationStatus } from '../../src/types';
 import {
-  generateShortId, validateName, validatePhone, validateNote,
+  validateName, validatePhone, validateNote,
   secureLog, secureError
 } from '../../src/utils';
 import { supabase } from '../../supabaseConfig';
@@ -36,53 +36,56 @@ export const createReservationActions = (set: StoreSet, get: StoreGet) => ({
     try {
       secureLog(`Creation reservation: ${nameValidation.sanitized} pour le ${data.date}`);
 
-      const reservationId = generateShortId('resa');
-
       const reservation = {
-        id: reservationId,
         club_id: clubId,
         client_name: nameValidation.sanitized || data.clientName.toUpperCase(),
         business_provider: sanitizedProvider,
         date: data.date,
-        time: data.time || '',
+        time: data.time || null,
         number_of_guests: data.numberOfGuests || 1,
-        notes: notesValidation.sanitized || '',
-        table_preference: tablePrefValidation.sanitized || '',
-        phone_number: phoneValidation.sanitized || '',
+        notes: notesValidation.sanitized || null,
+        table_preference: tablePrefValidation.sanitized || null,
+        phone_number: phoneValidation.sanitized || null,
         status: ReservationStatus.EN_ATTENTE,
         created_at: new Date().toISOString(),
-        created_by_id: currentUser?.id || '',
-        created_by_name: currentUser?.firstName || 'ADMIN',
       };
 
-      await supabase.from('reservations').insert(reservation);
+      const { data: insertedResa, error: resaError } = await supabase
+        .from('reservations')
+        .insert(reservation)
+        .select('id')
+        .single();
+      if (resaError || !insertedResa) {
+        secureError('[createReservation] Insert failed:', resaError);
+        return;
+      }
+      const reservationId = insertedResa.id;
 
       const { currentEvent } = get();
 
       if (currentEvent && data.date === currentEvent.date) {
-        const clientId = generateShortId('client');
         const newClient = {
-          id: clientId,
           club_id: clubId,
           event_id: currentEvent.id,
           name: nameValidation.sanitized || data.clientName.toUpperCase(),
           business_provider: sanitizedProvider,
-          table_id: '',
-          waiter_id: '',
+          table_id: null,
+          waiter_id: null,
           status: 'pending',
           total_spent: 0,
           arrival_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
-          created_by_id: currentUser?.id || '',
-          created_by_name: currentUser?.firstName || 'ADMIN',
           from_reservation: true,
           reservation_id: reservationId,
           number_of_guests: data.numberOfGuests || 1,
-          phone_number: phoneValidation.sanitized || '',
-          notes: notesValidation.sanitized || '',
+          phone_number: phoneValidation.sanitized || null,
+          notes: notesValidation.sanitized || null,
         };
 
-        await supabase.from('clients').insert(newClient);
+        const { error: clientError } = await supabase.from('clients').insert(newClient);
+        if (clientError) {
+          secureError('[createReservation] Client insert failed:', clientError);
+        }
 
         secureLog(`Client cree depuis reservation: ${nameValidation.sanitized}`);
       }

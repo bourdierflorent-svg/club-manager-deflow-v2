@@ -28,37 +28,26 @@ export async function createHubCustomerAuto(
   const displayName = `${firstName} ${lastName}`;
   const nickname = params.nickname?.trim() || null;
 
-  // Generate next SGP-CLI-XXXX id
-  const { data: existing } = await supabase
+  const { data: inserted, error } = await supabase
     .from('customers')
+    .insert({
+      first_name: firstName,
+      last_name: lastName,
+      phone: params.phone?.trim() || null,
+      email: null,
+      tags: [],
+      total_revenue: 0,
+      vip_score: 0,
+    })
     .select('id')
-    .like('id', 'SGP-CLI-%')
-    .order('id', { ascending: false })
-    .limit(100);
+    .single();
 
-  const nums = (existing ?? [])
-    .map(d => parseInt((d.id ?? '').replace('SGP-CLI-', ''), 10))
-    .filter(n => !isNaN(n));
-  const max = nums.length > 0 ? Math.max(...nums) : 0;
-  const newId = `SGP-CLI-${String(max + 1).padStart(4, '0')}`;
-
-  const { error } = await supabase.from('customers').insert({
-    id: newId,
-    first_name: firstName,
-    last_name: lastName,
-    phone: params.phone?.trim() || null,
-    email: null,
-    tags: [],
-    total_revenue: 0,
-    vip_score: 0,
-  });
-
-  if (error) throw new Error(error.message);
+  if (error || !inserted) throw new Error(error?.message || 'Insert failed');
 
   return {
-    customerId: newId,
+    customerId: inserted.id,
     snapshot: {
-      customerId: newId,
+      customerId: inserted.id,
       displayName,
       nickname,
       tags: [],
