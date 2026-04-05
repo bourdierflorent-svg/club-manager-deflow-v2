@@ -119,7 +119,7 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
 
       if (updatedItems.length === 0) {
         await supabase.from('orders').update({
-          status: OrderStatus.CANCELLED, cancel_reason: 'VIDE PAR MANAGER'
+          status: OrderStatus.CANCELLED
         }).eq('id', orderId);
       } else {
         const newTotal = updatedItems.reduce((acc, i) => acc + i.subtotal, 0);
@@ -168,17 +168,14 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
       if (updatedItems.length === 0) {
         await supabase.from('orders').update({
           status: OrderStatus.CANCELLED,
-          cancel_reason: 'TOUS ARTICLES RETIRES PAR MANAGER',
           items: updatedItems,
-          total_amount: 0,
-          removed_items: updatedRemovedItems
+          total_amount: 0
         }).eq('id', orderId);
       } else {
         const newTotal = updatedItems.reduce((acc, i) => acc + i.subtotal, 0);
         await supabase.from('orders').update({
           items: updatedItems,
-          total_amount: newTotal,
-          removed_items: updatedRemovedItems
+          total_amount: newTotal
         }).eq('id', orderId);
       }
       await recalculateEventRevenue(currentEvent.id);
@@ -244,12 +241,15 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
       }
       const updatedTotal = updatedItems.reduce((acc, i) => acc + i.subtotal, 0);
 
-      await supabase.from('orders').update({
+      const { error: updateError } = await supabase.from('orders').update({
         status: OrderStatus.SERVED,
-        validated_at: new Date().toISOString(),
         items: updatedItems,
         total_amount: updatedTotal
       }).eq('id', oId);
+      if (updateError) {
+        secureError('[validateOrder] Update failed:', updateError);
+        return;
+      }
 
       if (order.tableId) {
         await supabase.from('event_tables').update({ status: TableStatus.SERVED }).eq('id', order.tableId);
@@ -293,10 +293,13 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
       const order = orders.find(o => o.id === oId);
       if (!order || order.status === OrderStatus.CANCELLED) return;
       try {
-        await supabase.from('orders').update({
-          status: OrderStatus.CANCELLED,
-          cancel_reason: reason.toUpperCase()
+        const { error: cancelError } = await supabase.from('orders').update({
+          status: OrderStatus.CANCELLED
         }).eq('id', oId);
+        if (cancelError) {
+          secureError('[cancelOrder] Update failed:', cancelError);
+          return;
+        }
 
         await recalculateEventRevenue(currentEvent.id);
 
