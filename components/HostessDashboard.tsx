@@ -5,7 +5,7 @@ import {
   ReservationStatus, RESERVATION_STATUS_CONFIG, normalizeReservationStatus
 } from '../src/types';
 import {
-  Users, Plus, X, List, Map as MapIcon, ArrowRightLeft, UserPlus, TrendingUp, Clock, History,
+  Users, Plus, X, List, Map as MapIcon, ArrowRightLeft, TrendingUp, Clock, History,
   ShieldCheck, User, Trash2, Edit3, FileSpreadsheet, Download, Trophy, Briefcase, Calendar,
   Info, AlertCircle, UserMinus, Link, Play, StopCircle, AlertTriangle, Pencil, Check,
   ChevronLeft, ChevronRight
@@ -55,7 +55,6 @@ const HostessDashboard: React.FC = () => {
   }, [isOfflineMode, activeTab]);
 
   // --- ÉTATS MODALS LIVE ---
-  const [showModal, setShowModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   
@@ -82,9 +81,6 @@ const HostessDashboard: React.FC = () => {
   const [editHistoryFieldValue, setEditHistoryFieldValue] = useState('');
 
   // --- ÉTATS FORMULAIRES ---
-  const [newClientName, setNewClientName] = useState('');
-  const [newClientApporteur, setNewClientApporteur] = useState('');
-  const [selectedTableId, setSelectedTableId] = useState('');
   const [selectedWaiterId, setSelectedWaiterId] = useState('');
   const [clientToProcess, setClientToProcess] = useState<Client | null>(null);
   const [targetTableId, setTargetTableId] = useState('');
@@ -184,18 +180,6 @@ const HostessDashboard: React.FC = () => {
   const generatePDFReport = useCallback((event: EveningEvent) => {
     exportToPDF(event);
   }, [exportToPDF]);
-
-  const handleCreateClient = useCallback(() => {
-    if (!newClientName) return;
-    createClient(newClientName, newClientApporteur, selectedTableId || undefined, selectedWaiterId || undefined);
-    const tableName = selectedTableId ? tables.find(t => t.id === selectedTableId)?.number : null;
-    toast.success('Client enregistré', `${newClientName}${tableName ? ` - Table ${tableName}` : ' - En attente de table'}`);
-    setNewClientName('');
-    setNewClientApporteur('');
-    setSelectedTableId('');
-    setSelectedWaiterId('');
-    setShowModal(false);
-  }, [newClientName, newClientApporteur, selectedTableId, selectedWaiterId, createClient, tables, toast]);
 
   // ==========================================
   // 🔧 FIX: handleAssignSubmit - SERVEUR OPTIONNEL
@@ -346,7 +330,7 @@ const HostessDashboard: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
       {/* HEADER AVEC ONGLETS - Premium Design */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 fade-in-up">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 fade-in-up min-w-0 w-full">
         <div>
             <h2 className="text-3xl font-semibold text-white tracking-tighter uppercase">Espace Hôtesse</h2>
             <div className="flex items-center gap-3 mt-1">
@@ -365,12 +349,12 @@ const HostessDashboard: React.FC = () => {
             </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 p-1.5 rounded-xl flex gap-1">
+        <div className="bg-zinc-900 border border-zinc-800 p-1.5 rounded-xl flex gap-1 w-full max-w-full overflow-x-auto no-scrollbar flex-nowrap">
             {/* Onglet Live - Masqué en mode hors soirée */}
             {!isOfflineMode && (
                 <button
                     onClick={() => setActiveTab('live')}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-medium uppercase transition-all ${activeTab === 'live' ? 'text-white border-b-2 border-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-medium uppercase transition-all ${activeTab ==='live' ? 'text-white border-b-2 border-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                 >
                     <Users className="w-4 h-4" /> Live
                 </button>
@@ -379,26 +363,26 @@ const HostessDashboard: React.FC = () => {
             {!isOfflineMode && (
                 <button
                     onClick={() => setActiveTab('history')}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-medium uppercase transition-all ${activeTab === 'history' ? 'text-white border-b-2 border-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-medium uppercase transition-all ${activeTab ==='history' ? 'text-white border-b-2 border-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                 >
                     <History className="w-4 h-4" /> Historique {allClosedClients.length > 0 && `(${allClosedClients.length})`}
                 </button>
             )}
             <button
                 onClick={() => setActiveTab('reservations')}
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-medium uppercase transition-all ${activeTab === 'reservations' ? 'text-white border-b-2 border-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-medium uppercase transition-all ${activeTab ==='reservations' ? 'text-white border-b-2 border-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
                 <Calendar className="w-4 h-4" /> Résa
             </button>
             <button
                 onClick={() => setActiveTab('archives')}
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-medium uppercase transition-all ${activeTab === 'archives' ? 'text-white border-b-2 border-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-medium uppercase transition-all ${activeTab ==='archives' ? 'text-white border-b-2 border-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
                 <History className="w-4 h-4" /> Récap
             </button>
             <button
                 onClick={() => setActiveTab('clients')}
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-medium uppercase transition-all ${activeTab === 'clients' ? 'text-white border-b-2 border-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-medium uppercase transition-all ${activeTab ==='clients' ? 'text-white border-b-2 border-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
                 <Users className="w-4 h-4" /> Clients
             </button>
@@ -447,10 +431,10 @@ const HostessDashboard: React.FC = () => {
         <div className="fade-in-up space-y-6 max-w-2xl mx-auto">
             <div className="grid grid-cols-2 gap-4">
                 <button
-                onClick={() => setShowModal(true)}
+                onClick={() => setActiveTab('reservations')}
                 className="col-span-2 bg-white text-black py-8 rounded-xl font-medium text-2xl flex items-center justify-center gap-4"
                 >
-                <UserPlus className="w-8 h-8" /> NOUVELLE RÉSA
+                <Calendar className="w-8 h-8" /> NOUVELLE RÉSERVATION
                 </button>
 
                 <button
@@ -868,31 +852,6 @@ const HostessDashboard: React.FC = () => {
           <Suspense fallback={<div className="p-8 text-center text-white/30">Chargement...</div>}>
             <HubClientsPage />
           </Suspense>
-        </div>
-      )}
-
-      {/* --- MODAL NOUVELLE RÉSERVATION --- */}
-      {showModal && (
-        <div className="fixed inset-0 z-[500] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-enter">
-          <div className="bg-zinc-900 p-10 rounded-t-xl sm:rounded-xl w-full max-w-md border-t border-emerald-500/20 modal-enter">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-3xl font-semibold text-white uppercase tracking-tighter">Nouvelle Résa</h3>
-              <button onClick={() => setShowModal(false)} className="bg-zinc-800 p-4 rounded-full text-zinc-600"><X /></button>
-            </div>
-            <div className="space-y-4">
-              <input placeholder="NOM DU CLIENT" value={newClientName} onChange={e => setNewClientName(e.target.value.toUpperCase())} className="w-full bg-zinc-800 border-2 border-zinc-800 py-5 px-6 rounded-xl text-white font-semibold text-xl uppercase outline-none focus:border-white" autoFocus />
-              <input placeholder="APPORTEUR (OPTIONNEL)" value={newClientApporteur} onChange={e => setNewClientApporteur(e.target.value.toUpperCase())} className="w-full bg-zinc-800 border-2 border-zinc-800 py-5 px-6 rounded-xl text-white font-semibold text-lg uppercase outline-none focus:border-white" />
-              <select value={selectedTableId} onChange={e => setSelectedTableId(e.target.value)} className="w-full bg-zinc-800 border-2 border-zinc-800 py-5 px-6 rounded-xl text-white font-medium outline-none focus:border-white appearance-none cursor-pointer">
-                <option value="">-- Table (optionnel) --</option>
-                {availableTables.map(t => (<option key={t.id} value={t.id}>Table {t.number}</option>))}
-              </select>
-              <select value={selectedWaiterId} onChange={e => setSelectedWaiterId(e.target.value)} className="w-full bg-zinc-800 border-2 border-zinc-800 py-5 px-6 rounded-xl text-white font-medium outline-none focus:border-white appearance-none cursor-pointer">
-                <option value="">-- Serveur (optionnel) --</option>
-                {waiters.map(w => (<option key={w.id} value={w.id}>{w.firstName} {w.lastName}</option>))}
-              </select>
-            </div>
-            <button onClick={handleCreateClient} disabled={!newClientName} className="w-full mt-8 bg-emerald-600 disabled:opacity-30 py-6 rounded-xl font-medium text-xl text-white active:scale-95">Créer Réservation</button>
-          </div>
         </div>
       )}
 

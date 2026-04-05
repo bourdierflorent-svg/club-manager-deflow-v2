@@ -57,13 +57,28 @@ export const createClientActions = (set: StoreSet, get: StoreGet) => ({
       // Occupy new table
       await supabase.from('event_tables').update({ status: TableStatus.OCCUPIED }).eq('id', tId);
 
-      // Update reservation if first assignment
+      // Update reservation if first assignment — vérifier d'abord qu'elle existe
       if (client.reservationId && !oldTableId) {
-        logSync(`Reservation ${client.reservationId} -> Client arrive (CONFIRME)`);
-        await supabase.from('reservations').update({
-          status: ReservationStatus.CONFIRME,
-          arrived_at: new Date().toISOString()
-        }).eq('id', client.reservationId);
+        const { data: resaExists, error: resaCheckError } = await supabase
+          .from('reservations')
+          .select('id')
+          .eq('id', client.reservationId)
+          .maybeSingle();
+
+        if (resaCheckError) {
+          secureLog(`[WARN] Check résa ${client.reservationId} échoué:`, resaCheckError.message);
+        } else if (resaExists) {
+          logSync(`Reservation ${client.reservationId} -> Client arrive (VENU)`);
+          const { error: resaUpdateError } = await supabase.from('reservations').update({
+            status: ReservationStatus.VENU,
+            arrived_at: new Date().toISOString()
+          }).eq('id', client.reservationId);
+          if (resaUpdateError) {
+            secureLog(`[WARN] Update résa ${client.reservationId} échoué:`, resaUpdateError.message);
+          }
+        } else {
+          secureLog(`[WARN] Réservation ${client.reservationId} introuvable, skip update`);
+        }
       }
 
       logSync(`Assignation reussie: ${client.name} sur table ${tId}`);
