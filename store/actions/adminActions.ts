@@ -207,6 +207,15 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
         total_revenue: totalRevenue,
       }).eq('id', eventId);
 
+      // Mise à jour optimiste du store local
+      const { pastEvents } = get();
+      const updatedPastEvents = pastEvents.map(ev =>
+        ev.id === eventId
+          ? { ...ev, totalRevenue, detailedHistory, waiterStats, clientCount: archiveClients.length, orderCount: archiveOrders.length }
+          : ev
+      );
+      set({ pastEvents: updatedPastEvents });
+
       logSync(`recoverEvent OK: ${detailedHistory.length} entrees, CA: ${totalRevenue}E`);
     } catch (e) {
       secureError("[ERROR] [recoverEvent] Error:", e);

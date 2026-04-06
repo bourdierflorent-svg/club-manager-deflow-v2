@@ -1073,12 +1073,9 @@ const AdminDashboard: React.FC = () => {
                   setRecalculating(true);
                   try {
                     await recoverEvent(selectedArchive.id);
-                    // Forcer un resync pour récupérer les données mises à jour
-                    useStore.getState().forceResync();
-                    await new Promise(r => setTimeout(r, 2000));
                     const updated = useStore.getState().pastEvents.find(e => e.id === selectedArchive.id);
                     if (updated) setSelectedArchive(updated);
-                    addNotification({ type: 'success', title: 'RECALCUL OK', message: 'Soirée recalculée avec succès' });
+                    addNotification({ type: 'success', title: 'RECALCUL OK', message: `Soirée recalculée : ${updated?.totalRevenue ?? 0}€` });
                   } catch {
                     addNotification({ type: 'error', title: 'ERREUR', message: 'Échec du recalcul' });
                   }
