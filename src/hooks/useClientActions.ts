@@ -18,11 +18,11 @@ import { ERROR_MESSAGES, CONFIRM_MESSAGES } from '../utils';
 export interface UseClientActionsReturn {
   /** Créer un nouveau client */
   handleCreateClient: (
-    name: string, 
-    apporteur?: string, 
-    tableId?: string, 
+    name: string,
+    apporteur?: string,
+    tableId?: string,
     waiterId?: string
-  ) => void;
+  ) => Promise<void>;
   
   /** Assigner un client à une table et un serveur */
   handleAssignClient: (
@@ -68,7 +68,7 @@ export interface UseClientActionsReturn {
   ) => Promise<boolean>;
   
   /** Régler le paiement d'un client */
-  handleSettlePayment: (clientId: string) => void;
+  handleSettlePayment: (clientId: string) => Promise<void>;
   
   /** Libérer la table d'un client */
   handleFreeTable: (
@@ -147,7 +147,7 @@ export const useClientActions = (): UseClientActionsReturn => {
   /**
    * Créer un nouveau client
    */
-  const handleCreateClient = useCallback((
+  const handleCreateClient = useCallback(async (
     name: string,
     apporteur?: string,
     tableId?: string,
@@ -161,8 +161,12 @@ export const useClientActions = (): UseClientActionsReturn => {
       });
       return;
     }
-    
-    createClient(name, apporteur, tableId, waiterId);
+
+    try {
+      await createClient(name, apporteur, tableId, waiterId);
+    } catch {
+      addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+    }
   }, [createClient, addNotification]);
 
   /**
@@ -321,10 +325,14 @@ export const useClientActions = (): UseClientActionsReturn => {
   /**
    * Régler le paiement d'un client
    */
-  const handleSettlePayment = useCallback((clientId: string) => {
+  const handleSettlePayment = useCallback(async (clientId: string) => {
     if (!clientId) return;
-    settlePayment(clientId);
-  }, [settlePayment]);
+    try {
+      await settlePayment(clientId);
+    } catch {
+      addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+    }
+  }, [settlePayment, addNotification]);
 
   /**
    * Libérer la table d'un client

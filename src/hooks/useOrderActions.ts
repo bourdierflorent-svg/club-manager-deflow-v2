@@ -100,7 +100,7 @@ export interface UseOrderBasketReturn {
   updateQuantity: (itemId: string, quantity: number) => void;
   setNote: (note: string) => void;
   clearBasket: () => void;
-  submitOrder: (client: Client) => void;
+  submitOrder: (client: Client) => Promise<void>;
 }
 
 export const useOrderBasket = (): UseOrderBasketReturn => {
@@ -172,7 +172,7 @@ export const useOrderBasket = (): UseOrderBasketReturn => {
     setNote('');
   }, []);
 
-  const submitOrder = useCallback((client: Client) => {
+  const submitOrder = useCallback(async (client: Client) => {
     if (!currentUser) {
       addNotification({ type: 'error', title: 'ERREUR', message: 'Utilisateur non connecté' });
       return;
@@ -185,9 +185,13 @@ export const useOrderBasket = (): UseOrderBasketReturn => {
       addNotification({ type: 'error', title: 'ERREUR', message: 'Le client n\'a pas de table assignée' });
       return;
     }
-    createOrder(client.id, client.tableId, currentUser.id, items, note);
-    clearBasket();
-    addNotification({ type: 'success', title: 'COMMANDE ENVOYÉE', message: `${itemCount} article(s) - ${total}€` });
+    try {
+      await createOrder(client.id, client.tableId, currentUser.id, items, note);
+      clearBasket();
+      addNotification({ type: 'success', title: 'COMMANDE ENVOYÉE', message: `${itemCount} article(s) - ${total}€` });
+    } catch {
+      addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+    }
   }, [currentUser, isEmpty, items, note, itemCount, total, createOrder, clearBasket, addNotification]);
 
   return {

@@ -320,11 +320,15 @@ const WaiterDashboard: React.FC = () => {
     closeModal();
   }, [selectedClient, selectedTable, isSelectedTableLinked, handleUnlinkTable, handleUnassignClient, closeModal]);
 
-  const handleSettleAction = useCallback(() => {
+  const handleSettleAction = useCallback(async () => {
     if (!selectedClient) return;
-    handleSettlePayment(selectedClient.id);
-    closeModal();
-  }, [selectedClient, handleSettlePayment, closeModal]);
+    try {
+      await handleSettlePayment(selectedClient.id);
+      closeModal();
+    } catch {
+      addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+    }
+  }, [selectedClient, handleSettlePayment, closeModal, addNotification]);
 
   const handleFreeTableAction = useCallback(async () => {
     if (!selectedClient?.tableId) return;

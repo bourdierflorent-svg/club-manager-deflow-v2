@@ -298,13 +298,17 @@ const ManagerDashboard: React.FC = () => {
   }, [tempPrices, validateOrder]);
 
   // ✅ OPTIMISATION : useCallback pour handleCancelSubmit
-  const handleCancelSubmit = useCallback(() => {
+  const handleCancelSubmit = useCallback(async () => {
     if (orderToCancel && cancelReason.trim()) {
-      cancelOrder(orderToCancel.id, cancelReason.toUpperCase());
-      setOrderToCancel(null); 
-      setCancelReason('');
+      try {
+        await cancelOrder(orderToCancel.id, cancelReason.toUpperCase());
+        setOrderToCancel(null);
+        setCancelReason('');
+      } catch {
+        addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+      }
     }
-  }, [orderToCancel, cancelReason, cancelOrder]);
+  }, [orderToCancel, cancelReason, cancelOrder, addNotification]);
 
   // ✅ OPTIMISATION : useCallback pour handleDeleteClient
   const handleDeleteClient = useCallback((clientId: string) => {
@@ -312,11 +316,15 @@ const ManagerDashboard: React.FC = () => {
   }, [removeClient]);
 
   // ✅ OPTIMISATION : useCallback pour handleDeleteServedItem
-  const handleDeleteServedItem = useCallback((orderId: string, itemId: string, productName: string) => {
+  const handleDeleteServedItem = useCallback(async (orderId: string, itemId: string, productName: string) => {
     if (confirm(`Confirmez-vous le retrait de : ${productName} ?\n(Cela recalculera le CA de la soirée)`)) {
-        removeItemFromServedOrder(orderId, itemId);
+      try {
+        await removeItemFromServedOrder(orderId, itemId);
+      } catch {
+        addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+      }
     }
-  }, [removeItemFromServedOrder]);
+  }, [removeItemFromServedOrder, addNotification]);
 
   // ✅ OPTIMISATION : useCallback pour handleTableClick
   // 🔧 FIX: Priorité aux clients actifs pour éviter qu'un ancien client encaissé masque le nouveau
@@ -376,17 +384,21 @@ const ManagerDashboard: React.FC = () => {
   }, []);
 
   // ✅ OPTIMISATION : useCallback pour handlePriceUpdateSubmit
-  const handlePriceUpdateSubmit = useCallback(() => {
+  const handlePriceUpdateSubmit = useCallback(async () => {
     if (itemToEditPrice && newPriceInput && priceChangeReason.trim()) {
         const price = parseFloat(newPriceInput);
         if (!isNaN(price)) {
-            updateServedItemPrice(itemToEditPrice.orderId, itemToEditPrice.itemId, price, priceChangeReason);
+          try {
+            await updateServedItemPrice(itemToEditPrice.orderId, itemToEditPrice.itemId, price, priceChangeReason);
             setItemToEditPrice(null);
             setNewPriceInput('');
             setPriceChangeReason('');
+          } catch {
+            addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+          }
         }
     }
-  }, [itemToEditPrice, newPriceInput, priceChangeReason, updateServedItemPrice]);
+  }, [itemToEditPrice, newPriceInput, priceChangeReason, updateServedItemPrice, addNotification]);
 
   // ✅ OPTIMISATION : useCallback pour handleRemoveItemFromPending
   const handleRemoveItemFromPending = useCallback((orderId: string, itemId: string) => {
@@ -433,15 +445,19 @@ const ManagerDashboard: React.FC = () => {
   }, []);
 
   // Soumettre le transfert de table
-  const handleTransferSubmit = useCallback(() => {
+  const handleTransferSubmit = useCallback(async () => {
     if (clientToTransfer && targetTableId) {
-      transferClient(clientToTransfer.id, targetTableId);
-      setClientToTransfer(null);
-      setTargetTableId('');
-      setShowTransferModal(false);
-      setSelectedTable(null);
+      try {
+        await transferClient(clientToTransfer.id, targetTableId);
+        setClientToTransfer(null);
+        setTargetTableId('');
+        setShowTransferModal(false);
+        setSelectedTable(null);
+      } catch {
+        addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+      }
     }
-  }, [clientToTransfer, targetTableId, transferClient]);
+  }, [clientToTransfer, targetTableId, transferClient, addNotification]);
 
   // Ouvrir le modal de changement de serveur
   const openChangeWaiterModal = useCallback((client: Client) => {
@@ -451,14 +467,18 @@ const ManagerDashboard: React.FC = () => {
   }, []);
 
   // Soumettre le changement de serveur
-  const handleChangeWaiterSubmit = useCallback(() => {
+  const handleChangeWaiterSubmit = useCallback(async () => {
     if (clientToChangeWaiter && clientToChangeWaiter.tableId) {
-      assignClient(clientToChangeWaiter.id, clientToChangeWaiter.tableId, newWaiterId);
-      setClientToChangeWaiter(null);
-      setNewWaiterId('');
-      setShowChangeWaiterModal(false);
+      try {
+        await assignClient(clientToChangeWaiter.id, clientToChangeWaiter.tableId, newWaiterId);
+        setClientToChangeWaiter(null);
+        setNewWaiterId('');
+        setShowChangeWaiterModal(false);
+      } catch {
+        addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+      }
     }
-  }, [clientToChangeWaiter, newWaiterId, assignClient]);
+  }, [clientToChangeWaiter, newWaiterId, assignClient, addNotification]);
 
   // Ouvrir le modal d'édition du nom
   const openEditNameModal = useCallback((client: Client) => {

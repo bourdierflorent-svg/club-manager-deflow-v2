@@ -355,34 +355,42 @@ const AdminDashboard: React.FC = () => {
     addNotification({ type: 'success', title: 'CLIENT CREE', message: `Client ${newClientName} ajoute.` });
   }, [newClientName, newClientApporteur, selectedTableId, selectedWaiterId, currentUser, createClient, addNotification]);
 
-  const handleTransferClient = useCallback(() => {
+  const handleTransferClient = useCallback(async () => {
     if (selectedClientForDetail && targetTableId) {
-      transferClient(selectedClientForDetail.id, targetTableId);
-      setTargetTableId(''); 
-      setShowTransferModal(false); 
-      setShowDetailModal(false);
-      addNotification({ type: 'success', title: 'TRANSFERT', message: 'Client transfere.' });
+      try {
+        await transferClient(selectedClientForDetail.id, targetTableId);
+        setTargetTableId('');
+        setShowTransferModal(false);
+        setShowDetailModal(false);
+        addNotification({ type: 'success', title: 'TRANSFERT', message: 'Client transfere.' });
+      } catch {
+        addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+      }
     }
   }, [selectedClientForDetail, targetTableId, transferClient, addNotification]);
 
   // 🔧 FIX: Utiliser assignClient si le client n'a pas de serveur initial
-  const handleHandoverClient = useCallback(() => {
+  const handleHandoverClient = useCallback(async () => {
     if (selectedClientForDetail && targetWaiterId) {
-      // Si le client n'a pas de serveur assigné, on utilise assignClient
-      // Sinon on utilise handoverClient pour la passation
-      if (!selectedClientForDetail.waiterId) {
-        // Client sans serveur → assignClient avec la table actuelle
-        if (selectedClientForDetail.tableId) {
-          assignClient(selectedClientForDetail.id, selectedClientForDetail.tableId, targetWaiterId);
+      try {
+        // Si le client n'a pas de serveur assigné, on utilise assignClient
+        // Sinon on utilise handoverClient pour la passation
+        if (!selectedClientForDetail.waiterId) {
+          // Client sans serveur → assignClient avec la table actuelle
+          if (selectedClientForDetail.tableId) {
+            await assignClient(selectedClientForDetail.id, selectedClientForDetail.tableId, targetWaiterId);
+          }
+        } else {
+          // Client avec serveur → handover normal
+          await handoverClient(selectedClientForDetail.id, targetWaiterId);
         }
-      } else {
-        // Client avec serveur → handover normal
-        handoverClient(selectedClientForDetail.id, targetWaiterId);
+        setTargetWaiterId('');
+        setShowHandoverModal(false);
+        setShowDetailModal(false);
+        addNotification({ type: 'success', title: 'CLIENT TRANSFERE', message: 'Serveur modifie.' });
+      } catch {
+        addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
       }
-      setTargetWaiterId(''); 
-      setShowHandoverModal(false); 
-      setShowDetailModal(false);
-      addNotification({ type: 'success', title: 'CLIENT TRANSFERE', message: 'Serveur modifie.' });
     }
   }, [selectedClientForDetail, targetWaiterId, handoverClient, assignClient, addNotification]);
   
@@ -481,11 +489,15 @@ const AdminDashboard: React.FC = () => {
     }
   }, [selectedClientForDetail, unassignClient, addNotification]);
 
-  const handleSettlePayment = useCallback(() => {
+  const handleSettlePayment = useCallback(async () => {
     if (selectedClientForDetail) {
-      settlePayment(selectedClientForDetail.id);
-      setShowDetailModal(false);
-      addNotification({ type: 'success', title: 'ENCAISSEMENT', message: 'Client encaisse.' });
+      try {
+        await settlePayment(selectedClientForDetail.id);
+        setShowDetailModal(false);
+        addNotification({ type: 'success', title: 'ENCAISSEMENT', message: 'Client encaisse.' });
+      } catch {
+        addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+      }
     }
   }, [selectedClientForDetail, settlePayment, addNotification]);
 

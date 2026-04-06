@@ -82,6 +82,21 @@ export const createClientActions = (set: StoreSet, get: StoreGet) => ({
       }
 
       logSync(`Assignation reussie: ${client.name} sur table ${tId}`);
+
+      // Mise à jour optimiste du store local (sans attendre le realtime)
+      const updatedClients = get().clients.map(cl =>
+        cl.id === cId ? { ...cl, tableId: tId, waiterId: wId, status: ClientStatus.ASSIGNED } : cl
+      );
+      let updatedTables = get().tables.map(t =>
+        t.id === tId ? { ...t, status: TableStatus.OCCUPIED } : t
+      );
+      if (oldTableId && !isSameTable) {
+        updatedTables = updatedTables.map(t =>
+          t.id === oldTableId ? { ...t, status: TableStatus.AVAILABLE } : t
+        );
+      }
+      set({ clients: updatedClients, tables: updatedTables, lastSyncTime: new Date().toISOString() });
+
       return true;
 
     } catch (e) {
@@ -407,6 +422,27 @@ export const createClientActions = (set: StoreSet, get: StoreGet) => ({
       }
 
       get().logAction(get().currentUser?.id || '', get().currentUser?.firstName || '', 'TRANSFER', `Client ${c.name} transfere vers ${tId}`);
+
+      // Mise à jour optimiste du store local (sans attendre le realtime)
+      const updatedClients = get().clients.map(cl =>
+        cl.id === cId ? { ...cl, tableId: tId } : cl
+      );
+      let updatedTables = get().tables.map(t =>
+        t.id === tId ? { ...t, status: TableStatus.OCCUPIED } : t
+      );
+      if (oldTableId) {
+        const otherClientsOnOldTable = clients.filter(cl => cl.id !== cId && cl.tableId === oldTableId && cl.status !== 'closed');
+        if (otherClientsOnOldTable.length === 0) {
+          updatedTables = updatedTables.map(t =>
+            t.id === oldTableId ? { ...t, status: TableStatus.AVAILABLE } : t
+          );
+        }
+      }
+      const updatedOrders = get().orders.map(o =>
+        o.clientId === cId ? { ...o, tableId: tId } : o
+      );
+      set({ clients: updatedClients, tables: updatedTables, orders: updatedOrders, lastSyncTime: new Date().toISOString() });
+
       return true;
     } catch (e) {
       secureError("[ERROR] [transferClient] Error:", e);

@@ -207,16 +207,20 @@ const HostessDashboard: React.FC = () => {
     setShowAssignModal(false);
   }, [clientToProcess, targetTableId, selectedWaiterId, assignClient, tables, users, toast]);
 
-  const handleTransferSubmit = useCallback(() => {
+  const handleTransferSubmit = useCallback(async () => {
     if (clientToProcess && targetTableId) {
-      const tableName = tables.find(t => t.id === targetTableId)?.number;
-      transferClient(clientToProcess.id, targetTableId);
-      toast.success('Transfert effectué', `${clientToProcess.name} → Table ${tableName}`);
-      setClientToProcess(null);
-      setTargetTableId('');
-      setShowTransferModal(false);
+      try {
+        const tableName = tables.find(t => t.id === targetTableId)?.number;
+        await transferClient(clientToProcess.id, targetTableId);
+        toast.success('Transfert effectué', `${clientToProcess.name} → Table ${tableName}`);
+        setClientToProcess(null);
+        setTargetTableId('');
+        setShowTransferModal(false);
+      } catch {
+        addNotification({ type: 'error', title: 'ERREUR', message: 'Action échouée' });
+      }
     }
-  }, [clientToProcess, targetTableId, transferClient, tables, toast]);
+  }, [clientToProcess, targetTableId, transferClient, tables, toast, addNotification]);
 
   const handleDeleteClient = useCallback((client: Client) => {
     if (confirm(`Êtes-vous sûr de vouloir supprimer le client ${client.name} ?`)) {

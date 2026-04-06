@@ -1,5 +1,5 @@
 import type { StoreGet, StoreSet } from '../types';
-import type { OrderItem, RemovedOrderItem } from '../../src/types';
+import type { OrderItem, RemovedOrderItem, Order } from '../../src/types';
 import {
   OrderStatus, TableStatus, UserRole,
   ReservationStatus, normalizeReservationStatus
@@ -102,6 +102,26 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
           .eq('id', client.tableId);
         if (tableErr) secureError("[WARN] [createOrder] Table status update error:", tableErr);
       }
+
+      // Mise à jour optimiste du store local (sans attendre le realtime)
+      const newOrder: Order = {
+        id: `temp-${Date.now()}`,
+        eventId: currentEvent.id,
+        clientId: cId,
+        tableId: client.tableId,
+        waiterId: client.waiterId,
+        items,
+        note: orderNote,
+        totalAmount: order.total_amount,
+        status: OrderStatus.SERVED,
+        createdAt: nowIso,
+        validatedAt: nowIso,
+      };
+      const updatedOrders = [...get().orders, newOrder];
+      const updatedTables = client.tableId
+        ? get().tables.map(t => t.id === client.tableId ? { ...t, status: TableStatus.SERVED } : t)
+        : get().tables;
+      set({ orders: updatedOrders, tables: updatedTables, lastSyncTime: new Date().toISOString() });
 
       // Recalcul du CA de la soirée
       await recalculateEventRevenue(currentEvent.id);
@@ -323,6 +343,17 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
           await Promise.allSettled(stockDecrements);
         }
       }
+
+      // Mise à jour optimiste du store local (sans attendre le realtime)
+      const validatedAt = new Date().toISOString();
+      const updatedOrdersLocal = get().orders.map(o =>
+        o.id === oId ? { ...o, status: OrderStatus.SERVED, validatedAt, items: updatedItems, totalAmount: updatedTotal } : o
+      );
+      const updatedTablesLocal = order.tableId
+        ? get().tables.map(t => t.id === order.tableId ? { ...t, status: TableStatus.SERVED } : t)
+        : get().tables;
+      set({ orders: updatedOrdersLocal, tables: updatedTablesLocal, lastSyncTime: new Date().toISOString() });
+
     } catch (e) {
       secureError("[ERROR] [validateOrder] Error:", e);
     }
@@ -387,6 +418,29 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
             }
           }
         }
+
+        // Mise à jour optimiste du store local (sans attendre le realtime)
+        const updatedOrders = get().orders.map(o =>
+          o.id === oId ? { ...o, status: OrderStatus.CANCELLED, cancelReason: reason.toUpperCase() } : o
+        );
+        let updatedTables = get().tables;
+        if ((order.status === OrderStatus.SERVED || order.status === OrderStatus.SETTLED) && order.tableId) {
+          const remainingServedLocal = updatedOrders.some(o =>
+            o.id !== oId && o.tableId === order.tableId &&
+            (o.status === OrderStatus.SERVED || o.status === OrderStatus.SETTLED)
+          );
+          if (!remainingServedLocal) {
+            const hasActiveClient = clients.some(c =>
+              c.tableId === order.tableId && c.status !== 'closed'
+            );
+            const newTableStatus = hasActiveClient ? TableStatus.OCCUPIED : TableStatus.AVAILABLE;
+            updatedTables = updatedTables.map(t =>
+              t.id === order.tableId ? { ...t, status: newTableStatus } : t
+            );
+          }
+        }
+        set({ orders: updatedOrders, tables: updatedTables, lastSyncTime: new Date().toISOString() });
+
       } catch (e) {
         secureError("[ERROR] [cancelOrder] Error:", e);
       }
