@@ -46,6 +46,7 @@ const AdminDashboard: React.FC = () => {
   // --- ÉTATS ---
   const [activeTab, setActiveTab] = useState<'overview' | 'service' | 'team' | 'logs' | 'evenings' | 'config' | 'reservations' | 'caisse' | 'clients' | 'recapbouteilles'>('overview');
   const [isEditMapMode, setIsEditMapMode] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   
   // --- MODALS ---
   const [showUserModal, setShowUserModal] = useState(false);
@@ -1068,20 +1069,25 @@ const AdminDashboard: React.FC = () => {
               <button onClick={() => generatePDFReport(selectedArchive)} className="flex items-center gap-2 bg-red-600/20 text-red-400 px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-red-600/30 transition-all"><Download className="w-4 h-4" /> PDF</button>
               <button onClick={() => generateExcelReport(selectedArchive)} className="flex items-center gap-2 bg-emerald-600/20 text-emerald-400 px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-emerald-600/30 transition-all"><FileSpreadsheet className="w-4 h-4" /> Excel</button>
               <button
-                onClick={async (e) => {
-                  const btn = e.currentTarget;
-                  btn.disabled = true;
-                  btn.textContent = 'Recalcul...';
-                  await recoverEvent(selectedArchive.id);
-                  await new Promise(r => setTimeout(r, 1500));
-                  const updated = useStore.getState().pastEvents.find(e => e.id === selectedArchive.id);
-                  if (updated) setSelectedArchive(updated);
-                  btn.disabled = false;
-                  btn.textContent = '';
+                onClick={async () => {
+                  setRecalculating(true);
+                  try {
+                    await recoverEvent(selectedArchive.id);
+                    // Forcer un resync pour récupérer les données mises à jour
+                    useStore.getState().forceResync();
+                    await new Promise(r => setTimeout(r, 2000));
+                    const updated = useStore.getState().pastEvents.find(e => e.id === selectedArchive.id);
+                    if (updated) setSelectedArchive(updated);
+                    addNotification({ type: 'success', title: 'RECALCUL OK', message: 'Soirée recalculée avec succès' });
+                  } catch {
+                    addNotification({ type: 'error', title: 'ERREUR', message: 'Échec du recalcul' });
+                  }
+                  setRecalculating(false);
                 }}
-                className="flex items-center gap-2 bg-amber-600/20 text-amber-400 px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-amber-600/30 transition-all"
+                disabled={recalculating}
+                className="flex items-center gap-2 bg-amber-600/20 text-amber-400 px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-amber-600/30 transition-all disabled:opacity-50"
               >
-                <RotateCcw className="w-4 h-4" /> Recalculer
+                <RotateCcw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} /> {recalculating ? 'Recalcul...' : 'Recalculer'}
               </button>
             </div>
             {archiveWaiterStats.length > 0 && (
