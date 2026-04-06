@@ -168,7 +168,22 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
       const { users } = get();
 
       if (archiveOrders.length === 0) {
-        return { ok: false, orders: 0, error: `0 orders pour event ${eventId}` };
+        // Diagnostic : chercher si des commandes existent pour des clients de cet event
+        const clientIds = archiveClients.map(c => c.id);
+        let orphanCount = 0;
+        if (clientIds.length > 0) {
+          const { data: orphans } = await supabase
+            .from('orders')
+            .select('id, event_id, client_id, status, total_amount')
+            .in('client_id', clientIds.slice(0, 50))
+            .limit(10);
+          orphanCount = orphans?.length ?? 0;
+          if (orphans && orphans.length > 0) {
+            const sample = orphans[0];
+            return { ok: false, orders: 0, error: `0 orders pour event_id=${eventId.slice(0,8)}, MAIS ${orphanCount} orders trouvées via client_id (event_id réel: ${sample.event_id?.slice(0,8)}, status: ${sample.status}, montant: ${sample.total_amount})` };
+          }
+        }
+        return { ok: false, orders: 0, clients: archiveClients.length, error: `0 orders, ${archiveClients.length} clients, 0 orders orphelines` };
       }
 
       const servedSettled = archiveOrders.filter(o => o.status === OrderStatus.SERVED || o.status === OrderStatus.SETTLED);
