@@ -146,15 +146,12 @@ export const createEveningActions = (set: StoreSet, get: StoreGet) => ({
         tablesCount: clients.filter(c => c.waiterId === u.id).length
       })).filter(s => s.revenue > 0);
 
-      await recalculateEventRevenue(currentEvent.id);
+      // Calcul local du CA (fiable, pas de round-trip Supabase)
+      const finalRevenue = servedOrders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
+      logSync(`CA calculé localement: ${finalRevenue}E (${servedOrders.length} commandes)`);
 
-      // Re-fetch the event to get the final revenue
-      const { data: finalEventData } = await supabase
-        .from('events')
-        .select('total_revenue')
-        .eq('id', currentEvent.id)
-        .single();
-      const finalRevenue = Number(finalEventData?.total_revenue ?? 0);
+      // Sync aussi en base pour cohérence (fire-and-forget)
+      recalculateEventRevenue(currentEvent.id).catch(() => {});
 
       await supabase.from('events').update({
         name: currentEvent.name || 'SOIREE DEFLOWER',
