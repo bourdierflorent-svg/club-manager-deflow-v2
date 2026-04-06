@@ -16,12 +16,26 @@ const CaisseTab = lazy(() => import('./CaisseTab'));
 const InvoicesManager = lazy(() => import('./InvoicesManager'));
 
 const ManagerDashboard: React.FC = () => {
-  const { 
-    orders, validateOrder, cancelOrder, removeItemFromPendingOrder, removeItemFromServedOrder,
-    updateServedItemPrice, users, tables, clients, removeClient, createClient, products,
-    transferClient, assignClient, updateClientName, freeTable, reopenClient, settlePayment,
-    pastEvents, addNotification
-  } = useStore();
+  const orders = useStore(state => state.orders);
+  const validateOrder = useStore(state => state.validateOrder);
+  const cancelOrder = useStore(state => state.cancelOrder);
+  const removeItemFromPendingOrder = useStore(state => state.removeItemFromPendingOrder);
+  const removeItemFromServedOrder = useStore(state => state.removeItemFromServedOrder);
+  const updateServedItemPrice = useStore(state => state.updateServedItemPrice);
+  const users = useStore(state => state.users);
+  const tables = useStore(state => state.tables);
+  const clients = useStore(state => state.clients);
+  const removeClient = useStore(state => state.removeClient);
+  const createClient = useStore(state => state.createClient);
+  const products = useStore(state => state.products);
+  const transferClient = useStore(state => state.transferClient);
+  const assignClient = useStore(state => state.assignClient);
+  const updateClientName = useStore(state => state.updateClientName);
+  const freeTable = useStore(state => state.freeTable);
+  const reopenClient = useStore(state => state.reopenClient);
+  const settlePayment = useStore(state => state.settlePayment);
+  const pastEvents = useStore(state => state.pastEvents);
+  const addNotification = useStore(state => state.addNotification);
   
   const [activeView, setActiveView] = useState<'queue' | 'history' | 'stats' | 'map' | 'recap' | 'caisse' | 'factures'>('queue');
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);

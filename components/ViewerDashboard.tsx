@@ -35,7 +35,7 @@ const NavButton: React.FC<{
 // ============================================
 
 const ViewerDashboard: React.FC = () => {
-  const { orders } = useStore();
+  const orders = useStore(state => state.orders);
 
   const [activeView, setActiveView] = useState<ViewMode>('stats');
 

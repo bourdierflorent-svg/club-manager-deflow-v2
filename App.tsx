@@ -302,7 +302,10 @@ const SessionWarningModal: React.FC<{
 };
 
 const App: React.FC = () => {
-  const { currentUser, currentEvent, initializeFromSupabase, logout } = useStore();
+  const currentUser = useStore(state => state.currentUser);
+  const currentEvent = useStore(state => state.currentEvent);
+  const initializeFromSupabase = useStore(state => state.initializeFromSupabase);
+  const logout = useStore(state => state.logout);
   const [error, setError] = useState<string | null>(null);
   const [showSessionWarning, setShowSessionWarning] = useState(false);
   const [warningTimeLeft, setWarningTimeLeft] = useState(300);
