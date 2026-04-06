@@ -59,11 +59,18 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
 
   deleteEvent: async (eventId: string) => {
     try {
-      // Delete sub-data first
+      // Delete sub-data first (toutes les tables liees a l'event)
       await supabase.from('orders').delete().eq('event_id', eventId);
       await supabase.from('clients').delete().eq('event_id', eventId);
       await supabase.from('event_tables').delete().eq('event_id', eventId);
-      await supabase.from('events').delete().eq('id', eventId);
+      await supabase.from('caisses').delete().eq('event_id', eventId);
+
+      // Delete l'event lui-meme
+      const { error } = await supabase.from('events').delete().eq('id', eventId);
+      if (error) {
+        secureError("[deleteEvent] Supabase delete failed:", error);
+        throw error;
+      }
 
       // Mise à jour locale du store
       const { pastEvents } = get();
@@ -73,6 +80,7 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
       get().logAction(user?.id || '', user?.firstName || 'ADMIN', 'DELETE_EVENT', `Suppression archive ID: ${eventId}`, 'critical');
     } catch (e) {
       secureError("[ERROR] [deleteEvent] Error:", e);
+      throw e;
     }
   },
 

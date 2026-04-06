@@ -211,8 +211,12 @@ const AdminDashboard: React.FC = () => {
     // Fermer le modal AVANT l'action async
     setArchiveToDelete(null);
     setSelectedArchive(null);
-    await deleteEvent(id);
-    addNotification({ type: 'success', title: 'ARCHIVE SUPPRIMEE', message: `La soiree "${name}" a ete supprimee.` });
+    try {
+      await deleteEvent(id);
+      addNotification({ type: 'success', title: 'ARCHIVE SUPPRIMEE', message: `La soiree "${name}" a ete supprimee.` });
+    } catch {
+      addNotification({ type: 'error', title: 'ERREUR', message: `Impossible de supprimer "${name}". Verifie la console.` });
+    }
   };
 
   // --- RECAP BOUTEILLES (dernier récap archivé) ---
