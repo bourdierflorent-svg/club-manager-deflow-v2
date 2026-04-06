@@ -209,6 +209,7 @@ const AdminDashboard: React.FC = () => {
       await deleteEvent(archiveToDelete.id);
       addNotification({ type: 'success', title: 'ARCHIVE SUPPRIMEE', message: `La soiree "${archiveToDelete.name || 'Soiree'}" a ete supprimee.` });
       setArchiveToDelete(null);
+      setSelectedArchive(null);
     }
   }, [archiveToDelete, deleteEvent, addNotification]);
 

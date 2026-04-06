@@ -65,6 +65,10 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
       await supabase.from('event_tables').delete().eq('event_id', eventId);
       await supabase.from('events').delete().eq('id', eventId);
 
+      // Mise à jour locale du store
+      const { pastEvents } = get();
+      set({ pastEvents: pastEvents.filter(ev => ev.id !== eventId) });
+
       const user = get().currentUser;
       get().logAction(user?.id || '', user?.firstName || 'ADMIN', 'DELETE_EVENT', `Suppression archive ID: ${eventId}`, 'critical');
     } catch (e) {
