@@ -64,9 +64,10 @@ const formatDateKey = (year: number, month: number, day: number) => {
 
 interface ReservationsManagerProps {
   readOnly?: boolean; // Pour le mode Viewer
+  canForceDelete?: boolean; // Gérant peut supprimer même les résas confirmées/venues
 }
 
-const ReservationsManager: React.FC<ReservationsManagerProps> = ({ readOnly = false }) => {
+const ReservationsManager: React.FC<ReservationsManagerProps> = ({ readOnly = false, canForceDelete = false }) => {
   const {
     reservations,
     allReservations,
@@ -834,7 +835,7 @@ const ReservationsManager: React.FC<ReservationsManagerProps> = ({ readOnly = fa
                 const associatedClient = (normalizedStatus === ReservationStatus.CONFIRME || normalizedStatus === ReservationStatus.VENU)
                   ? getClientForReservation(reservation.id)
                   : null;
-                const isProtected = normalizedStatus === ReservationStatus.VENU || normalizedStatus === ReservationStatus.CONFIRME;
+                const isProtected = !canForceDelete && (normalizedStatus === ReservationStatus.VENU || normalizedStatus === ReservationStatus.CONFIRME);
                 const config = RESERVATION_STATUS_CONFIG[normalizedStatus];
 
                 // Handler pour le changement de statut
