@@ -42,14 +42,16 @@ export const createOrderActions = (set: StoreSet, get: StoreGet) => ({
 
     const isAdmin = currentUser?.role === UserRole.ADMIN;
     const isManager = currentUser?.role === UserRole.MANAGER;
+    const isCommis = currentUser?.role === UserRole.COMMIS;
+    const isBarmaid = currentUser?.role === UserRole.BARMAID;
     const isAssignedWaiter = client.waiterId === currentUser?.id;
 
-    if (!isAdmin && !isManager && wId && wId !== client.waiterId) {
+    if (!isAdmin && !isManager && !isCommis && !isBarmaid && wId && wId !== client.waiterId) {
       secureLog(`[WARN] [createOrder] RACE CONDITION: Serveur change pendant creation commande`);
       return;
     }
 
-    if (!isAdmin && !isManager && !isAssignedWaiter) {
+    if (!isAdmin && !isManager && !isCommis && !isBarmaid && !isAssignedWaiter) {
       secureLog(`[WARN] [createOrder] Permission refusee: ${currentUser?.firstName} n'est pas autorise pour ${client.name}`);
       return;
     }
