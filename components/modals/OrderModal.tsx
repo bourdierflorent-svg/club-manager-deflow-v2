@@ -140,13 +140,16 @@ const OrderModal: React.FC<OrderModalProps> = ({
     onClose();
   };
 
-  const handleSendOrder = () => {
+  const handleSendOrder = useCallback(() => {
     if (!client || isSubmittingRef.current) return;
     isSubmittingRef.current = true;
-    basket.submitOrder(client);
-    onSuccess?.();
+    const clientSnapshot = client;
+    // Fermer le modal IMMEDIATEMENT, puis soumettre en arriere-plan
     onClose();
-  };
+    onSuccess?.();
+    // submitOrder en background (clearBasket + notification geres dedans)
+    basket.submitOrder(clientSnapshot);
+  }, [client, basket, onClose, onSuccess]);
 
   const handleAddToBasket = useCallback(() => {
     if (!form.selectedProduct) return;
