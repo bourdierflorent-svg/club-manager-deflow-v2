@@ -279,41 +279,6 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
           .subscribe();
         channels.push(reservationsChannel);
 
-        // --- Initial fetch + Realtime: Past Events ---
-        const { data: pastEvents } = await supabase
-          .from('events')
-          .select('*')
-          .eq('club_id', clubId)
-          .eq('status', 'closed')
-          .order('date', { ascending: false })
-          .limit(200);
-        if (pastEvents) {
-          const mapped = pastEvents.map(mapEventFromDb);
-          const enriched = await enrichPastEventsWithRevenue(mapped);
-          set({ pastEvents: enriched });
-        }
-
-        const pastEventsChannel = supabase.channel('past-events-changes')
-          .on('postgres_changes', {
-            event: '*', schema: 'public', table: 'events',
-            filter: `club_id=eq.${clubId}`
-          }, async () => {
-            const { data } = await supabase
-              .from('events')
-              .select('*')
-              .eq('club_id', clubId)
-              .eq('status', 'closed')
-              .order('date', { ascending: false })
-              .limit(200);
-            if (data) {
-              const mapped = data.map(mapEventFromDb);
-              const enriched = await enrichPastEventsWithRevenue(mapped);
-              set({ pastEvents: enriched });
-            }
-          })
-          .subscribe();
-        channels.push(pastEventsChannel);
-
         // --- Track active event and its sub-data ---
         let currentEventId: string | null = null;
         const eventDataChannels: ReturnType<typeof supabase.channel>[] = [];
@@ -390,7 +355,7 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
           eventDataChannels.push(ordersChannel);
         };
 
-        // --- Initial fetch: Active Event ---
+        // --- PRIORITE: Initial fetch Active Event (AVANT les archives) ---
         const { data: activeEvents } = await supabase
           .from('events')
           .select('*')
@@ -405,8 +370,51 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
           await subscribeToEventData(event.id);
         } else {
           logSync('Aucun event actif');
-          set({ currentEvent: null, clients: [], orders: [], tables: INITIAL_TABLES });
+          set({ currentEvent: null, clients: [], orders: [], tables: INITIAL_TABLES, isOnline: true });
         }
+
+        // --- Initial fetch + Realtime: Past Events (protege, ne bloque pas l'init) ---
+        try {
+          const { data: pastEvents } = await supabase
+            .from('events')
+            .select('*')
+            .eq('club_id', clubId)
+            .eq('status', 'closed')
+            .order('date', { ascending: false })
+            .limit(200);
+          if (pastEvents) {
+            const mapped = pastEvents.map(mapEventFromDb);
+            const enriched = await enrichPastEventsWithRevenue(mapped);
+            set({ pastEvents: enriched });
+          }
+        } catch (archiveError) {
+          secureError('[initializeFromSupabase] Archive enrichment failed (non-blocking):', archiveError);
+        }
+
+        const pastEventsChannel = supabase.channel('past-events-changes')
+          .on('postgres_changes', {
+            event: '*', schema: 'public', table: 'events',
+            filter: `club_id=eq.${clubId}`
+          }, async () => {
+            try {
+              const { data } = await supabase
+                .from('events')
+                .select('*')
+                .eq('club_id', clubId)
+                .eq('status', 'closed')
+                .order('date', { ascending: false })
+                .limit(200);
+              if (data) {
+                const mapped = data.map(mapEventFromDb);
+                const enriched = await enrichPastEventsWithRevenue(mapped);
+                set({ pastEvents: enriched });
+              }
+            } catch (e) {
+              secureError('[pastEventsChannel] Enrichment error:', e);
+            }
+          })
+          .subscribe();
+        channels.push(pastEventsChannel);
 
         // Realtime: Active event changes
         const activeEventChannel = supabase.channel('active-event-changes')

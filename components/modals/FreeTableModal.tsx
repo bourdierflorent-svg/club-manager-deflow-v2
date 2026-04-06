@@ -53,6 +53,7 @@ const FreeTableModal: React.FC<FreeTableModalProps> = ({
   const [clientName, setClientName] = useState('');
   const [clientApporteur, setClientApporteur] = useState('');
   const [selectedWaiterId, setSelectedWaiterId] = useState(autoWaiterId || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset complet à chaque ouverture
   useEffect(() => {
@@ -64,6 +65,7 @@ const FreeTableModal: React.FC<FreeTableModalProps> = ({
       setClientName('');
       setClientApporteur('');
       setSelectedWaiterId(autoWaiterId || '');
+      setIsSubmitting(false);
     }
   }, [isOpen, autoWaiterId]);
 
@@ -88,7 +90,8 @@ const FreeTableModal: React.FC<FreeTableModalProps> = ({
   };
 
   const handleSubmitNewClient = () => {
-    if (!clientName.trim()) return;
+    if (!clientName.trim() || isSubmitting) return;
+    setIsSubmitting(true);
     onCreateClient(
       clientName.trim(),
       clientApporteur.trim() || undefined,
@@ -304,10 +307,10 @@ const FreeTableModal: React.FC<FreeTableModalProps> = ({
 
             <button
               onClick={handleSubmitNewClient}
-              disabled={!clientName.trim()}
+              disabled={!clientName.trim() || isSubmitting}
               className="w-full bg-blue-600 disabled:opacity-30 text-white py-5 rounded-lg font-medium uppercase active:scale-95 transition-all"
             >
-              Creer et installer
+              {isSubmitting ? 'Installation...' : 'Creer et installer'}
             </button>
           </div>
         )}
