@@ -145,10 +145,72 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // Alias utilisé par le bouton "Recalculer" dans AdminDashboard
+  // Utilisé par le bouton "Recalculer" dans AdminDashboard — même logique que repairArchive
   recoverEvent: async (eventId: string) => {
-    const self = get() as any;
-    await self.repairArchive(eventId);
+    try {
+      logSync(`recoverEvent ${eventId} - Lecture des donnees Supabase...`);
+
+      const [ordersRes, clientsRes, tablesRes] = await Promise.all([
+        supabase.from('orders').select('*').eq('event_id', eventId),
+        supabase.from('clients').select('*').eq('event_id', eventId),
+        supabase.from('event_tables').select('*').eq('event_id', eventId),
+      ]);
+
+      const archiveOrders = (ordersRes.data || []).map(mapOrderFromDb);
+      const archiveClients = (clientsRes.data || []).map(mapClientFromDb);
+      const archiveTables = (tablesRes.data || []).map(mapTableFromDb);
+      const { users } = get();
+
+      logSync(`Donnees: ${archiveOrders.length} commandes, ${archiveClients.length} clients`);
+      if (archiveOrders.length === 0) return;
+
+      const servedSettled = archiveOrders.filter(o => o.status === OrderStatus.SERVED || o.status === OrderStatus.SETTLED);
+
+      const detailedHistory = archiveOrders
+        .filter(o => o.status === OrderStatus.SERVED || o.status === OrderStatus.SETTLED || o.status === OrderStatus.PENDING)
+        .map(o => {
+          const client = archiveClients.find(c => c.id === o.clientId);
+          const table = archiveTables.find(t => t.id === o.tableId);
+          const clientTable = !table && client?.tableId ? archiveTables.find(t => t.id === client.tableId) : null;
+          const resolvedTable = table || clientTable;
+          const waiter = users.find(u => u.id === o.waiterId);
+          const tableNumber = resolvedTable?.number || '?';
+          return {
+            clientName: client?.name || 'Inconnu',
+            tableNumber,
+            zone: getTableZone(tableNumber, resolvedTable?.zone),
+            apporteur: client?.businessProvider || '-',
+            waiterName: waiter?.firstName || 'Inconnu',
+            totalAmount: Number(o.totalAmount || 0),
+            items: o.items?.map(i => `${i.quantity}x ${i.productName} (${i.size})`) || []
+          };
+        });
+
+      if (detailedHistory.length === 0) return;
+
+      const totalRevenue = servedSettled.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
+
+      const waiterStats = users
+        .filter(u => u.role === UserRole.WAITER)
+        .map(u => ({
+          name: u.firstName,
+          revenue: servedSettled.filter(o => o.waiterId === u.id).reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0),
+          tablesCount: archiveClients.filter(c => c.waiterId === u.id).length
+        }))
+        .filter(s => s.revenue > 0);
+
+      await supabase.from('events').update({
+        detailed_history: detailedHistory,
+        waiter_stats: waiterStats,
+        client_count: archiveClients.length,
+        order_count: archiveOrders.length,
+        total_revenue: totalRevenue,
+      }).eq('id', eventId);
+
+      logSync(`recoverEvent OK: ${detailedHistory.length} entrees, CA: ${totalRevenue}E`);
+    } catch (e) {
+      secureError("[ERROR] [recoverEvent] Error:", e);
+    }
   },
 
   updateArchivedApporteur: async (eventId: string, clientName: string, newApporteur: string) => {
