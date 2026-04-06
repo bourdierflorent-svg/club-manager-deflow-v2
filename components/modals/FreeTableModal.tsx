@@ -4,7 +4,7 @@
  * Permet d'installer un client existant (en attente) ou de creer un nouveau client
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { X, UserPlus, UserCheck, ArrowLeft, Search, Clock } from 'lucide-react';
 import { Table, User, Client } from '../../src/types';
 
@@ -54,16 +54,18 @@ const FreeTableModal: React.FC<FreeTableModalProps> = ({
   const [clientApporteur, setClientApporteur] = useState('');
   const [selectedWaiterId, setSelectedWaiterId] = useState(autoWaiterId || '');
 
-  const resetAndClose = () => {
-    setStep('choice');
-    setSelectedClientId('');
-    setExistingWaiterId(autoWaiterId || '');
-    setSearchExisting('');
-    setClientName('');
-    setClientApporteur('');
-    setSelectedWaiterId(autoWaiterId || '');
-    onClose();
-  };
+  // Reset complet à chaque ouverture
+  useEffect(() => {
+    if (isOpen) {
+      setStep('choice');
+      setSelectedClientId('');
+      setExistingWaiterId(autoWaiterId || '');
+      setSearchExisting('');
+      setClientName('');
+      setClientApporteur('');
+      setSelectedWaiterId(autoWaiterId || '');
+    }
+  }, [isOpen, autoWaiterId]);
 
   const goBack = () => {
     setStep('choice');
@@ -78,10 +80,11 @@ const FreeTableModal: React.FC<FreeTableModalProps> = ({
     return pendingClients.filter(c => c.name.toLowerCase().includes(q));
   }, [pendingClients, searchExisting]);
 
+  // Fermeture : UNIQUEMENT onClose(), pas de setState enfant mélangé
   const handleAssignExisting = () => {
     if (!selectedClientId) return;
     onAssignExisting(selectedClientId, existingWaiterId || undefined);
-    resetAndClose();
+    onClose();
   };
 
   const handleSubmitNewClient = () => {
@@ -91,7 +94,7 @@ const FreeTableModal: React.FC<FreeTableModalProps> = ({
       clientApporteur.trim() || undefined,
       selectedWaiterId || undefined
     );
-    resetAndClose();
+    onClose();
   };
 
   if (!isOpen || !table) return null;
@@ -121,7 +124,7 @@ const FreeTableModal: React.FC<FreeTableModalProps> = ({
               </p>
             </div>
           </div>
-          <button onClick={resetAndClose} className="text-zinc-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>

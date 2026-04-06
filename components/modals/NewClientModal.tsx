@@ -3,7 +3,7 @@
  * Modal pour créer un nouveau client
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
 // ============================================
@@ -30,19 +30,23 @@ const NewClientModal: React.FC<NewClientModalProps> = ({
   const [name, setName] = useState('');
   const [apporteur, setApporteur] = useState('');
 
-  const handleSubmit = useCallback(() => {
-    if (name.trim()) {
-      onSubmit(name.trim(), apporteur.trim() || undefined);
+  // Reset à l'ouverture
+  useEffect(() => {
+    if (isOpen) {
       setName('');
       setApporteur('');
     }
+  }, [isOpen]);
+
+  const handleSubmit = useCallback(() => {
+    if (name.trim()) {
+      onSubmit(name.trim(), apporteur.trim() || undefined);
+      // Pas de setState enfant ici — le nettoyage se fait via useEffect à la prochaine ouverture
+    }
   }, [name, apporteur, onSubmit]);
 
-  const handleClose = useCallback(() => {
-    setName('');
-    setApporteur('');
-    onClose();
-  }, [onClose]);
+  // Fermeture : UNIQUEMENT onClose(), pas de setState enfant mélangé
+  const handleClose = onClose;
 
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value.toUpperCase());

@@ -117,12 +117,15 @@ const OrderModal: React.FC<OrderModalProps> = ({
   const isSubmittingRef = useRef(false);
   const [mobileView, setMobileView] = useState<'menu' | 'basket'>('menu');
 
-  // Reset état quand le modal s'ouvre pour un nouveau client (panier → menu, ref submit)
+  // Reset complet à chaque ouverture (nettoyage panier, vue, form)
   useEffect(() => {
     if (isOpen) {
+      basket.clearBasket();
+      form.reset();
       setMobileView('menu');
       isSubmittingRef.current = false;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, client?.id]);
 
   // Catégories uniques
@@ -131,23 +134,18 @@ const OrderModal: React.FC<OrderModalProps> = ({
   // Produits filtrés par catégorie
   const filteredProducts = products.filter(p => p.category === form.selectedCategory);
 
-  // Handlers — pas de useCallback chaîné pour éviter les closures stale
-  const resetAndClose = () => {
-    basket.clearBasket();
-    form.reset();
-    setMobileView('menu');
-    isSubmittingRef.current = false;
+  // Fermeture : UNIQUEMENT onClose(), pas de setState enfant mélangé
+  // Le nettoyage se fait via useEffect à la prochaine ouverture
+  const handleClose = () => {
     onClose();
   };
-
-  const handleClose = resetAndClose;
 
   const handleSendOrder = () => {
     if (!client || isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     basket.submitOrder(client);
     onSuccess?.();
-    resetAndClose();
+    onClose();
   };
 
   const handleAddToBasket = useCallback(() => {
