@@ -33,6 +33,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   { id: 'w6', name: 'Johnnie Walker Blue Label', category: 'Whisky', prices: { standard: 800 } },
 
   // TEQUILA
+  { id: 'tq0', name: 'Patrón Silver', category: 'Tequila', prices: { standard: 370 } },
   { id: 'tq1', name: 'Patrón Añejo', category: 'Tequila', prices: { standard: 420 } },
   { id: 'tq2', name: 'Patrón Cafe', category: 'Tequila', prices: { standard: 420 } },
   { id: 'tq3', name: 'Patrón El Cielo', category: 'Tequila', prices: { standard: 800 } },

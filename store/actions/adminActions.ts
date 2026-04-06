@@ -59,11 +59,12 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
 
   deleteEvent: async (eventId: string) => {
     try {
-      // Delete sub-data first (toutes les tables liees a l'event)
+      // Delete sub-data first (toutes les tables liees a l'event, y compris audit_logs pour la FK)
       await supabase.from('orders').delete().eq('event_id', eventId);
       await supabase.from('clients').delete().eq('event_id', eventId);
       await supabase.from('event_tables').delete().eq('event_id', eventId);
       await supabase.from('caisses').delete().eq('event_id', eventId);
+      await supabase.from('audit_logs').delete().eq('event_id', eventId);
 
       // Delete l'event lui-meme
       const { error } = await supabase.from('events').delete().eq('id', eventId);
