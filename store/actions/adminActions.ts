@@ -122,14 +122,20 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
         }))
         .filter(s => s.revenue > 0);
 
+      // Recalcul du CA depuis les commandes served/settled
+      const totalRevenue = archiveOrders
+        .filter(o => o.status === OrderStatus.SERVED || o.status === OrderStatus.SETTLED)
+        .reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
+
       await supabase.from('events').update({
         detailed_history: detailedHistory,
         waiter_stats: waiterStats,
         client_count: archiveClients.length,
         order_count: archiveOrders.length,
+        total_revenue: totalRevenue,
       }).eq('id', eventId);
 
-      logSync(`Archive reparee: ${detailedHistory.length} entrees restaurees`);
+      logSync(`Archive reparee: ${detailedHistory.length} entrees, CA: ${totalRevenue}E`);
 
       const user = get().currentUser;
       get().logAction(user?.id || '', user?.firstName || 'ADMIN', 'REPAIR_ARCHIVE', `Archive ${eventId} reparee: ${detailedHistory.length} entrees`, 'high');
