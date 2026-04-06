@@ -1072,14 +1072,16 @@ const AdminDashboard: React.FC = () => {
                 onClick={async () => {
                   setRecalculating(true);
                   try {
-                    await recoverEvent(selectedArchive.id);
+                    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout 15s')), 15000));
+                    await Promise.race([recoverEvent(selectedArchive.id), timeout]);
                     const updated = useStore.getState().pastEvents.find(e => e.id === selectedArchive.id);
                     if (updated) setSelectedArchive(updated);
                     addNotification({ type: 'success', title: 'RECALCUL OK', message: `Soirée recalculée : ${updated?.totalRevenue ?? 0}€` });
-                  } catch {
-                    addNotification({ type: 'error', title: 'ERREUR', message: 'Échec du recalcul' });
+                  } catch (err: any) {
+                    addNotification({ type: 'error', title: 'ERREUR RECALCUL', message: err?.message || 'Échec du recalcul' });
+                  } finally {
+                    setRecalculating(false);
                   }
-                  setRecalculating(false);
                 }}
                 disabled={recalculating}
                 className="flex items-center gap-2 bg-amber-600/20 text-amber-400 px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-amber-600/30 transition-all disabled:opacity-50"

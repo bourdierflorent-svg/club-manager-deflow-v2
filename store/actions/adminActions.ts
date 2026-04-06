@@ -150,19 +150,27 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
     try {
       logSync(`recoverEvent ${eventId} - Lecture des donnees Supabase...`);
 
+      logSync(`recoverEvent: fetch Supabase pour event ${eventId}...`);
       const [ordersRes, clientsRes, tablesRes] = await Promise.all([
         supabase.from('orders').select('*').eq('event_id', eventId),
         supabase.from('clients').select('*').eq('event_id', eventId),
         supabase.from('event_tables').select('*').eq('event_id', eventId),
       ]);
+      logSync(`recoverEvent: fetch OK`);
+
+      if (ordersRes.error) { secureError('[recoverEvent] orders error:', ordersRes.error); return; }
+      if (clientsRes.error) { secureError('[recoverEvent] clients error:', clientsRes.error); return; }
 
       const archiveOrders = (ordersRes.data || []).map(mapOrderFromDb);
       const archiveClients = (clientsRes.data || []).map(mapClientFromDb);
       const archiveTables = (tablesRes.data || []).map(mapTableFromDb);
       const { users } = get();
 
-      logSync(`Donnees: ${archiveOrders.length} commandes, ${archiveClients.length} clients`);
-      if (archiveOrders.length === 0) return;
+      logSync(`recoverEvent: ${archiveOrders.length} commandes, ${archiveClients.length} clients, ${archiveTables.length} tables`);
+      if (archiveOrders.length === 0) {
+        logSync(`recoverEvent: AUCUNE commande trouvee pour event ${eventId}`);
+        return;
+      }
 
       const servedSettled = archiveOrders.filter(o => o.status === OrderStatus.SERVED || o.status === OrderStatus.SETTLED);
 
