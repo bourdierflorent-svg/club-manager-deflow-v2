@@ -231,9 +231,11 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
       set({ pastEvents: updatedPastEvents });
 
       notify(`TERMINÉ: ${detailedHistory.length} entrées, CA: ${totalRevenue}E`);
+      return { ok: true, orders: archiveOrders.length, served: servedSettled.length, revenue: totalRevenue };
     } catch (e: any) {
       notify(`EXCEPTION: ${e?.message || e}`);
       secureError("[ERROR] [recoverEvent] Error:", e);
+      return { ok: false, error: e?.message };
     }
   },
 

@@ -1080,14 +1080,10 @@ const AdminDashboard: React.FC = () => {
                     }
                     setRecalcStatus(`Recalcul event ${selectedArchive.id.slice(0, 8)}...`);
                     const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout 15s')), 15000));
-                    await Promise.race([recoverEvent(selectedArchive.id), timeout]);
+                    const result: any = await Promise.race([recoverEvent(selectedArchive.id), timeout]);
                     const updated = useStore.getState().pastEvents.find(e => e.id === selectedArchive.id);
-                    if (updated) {
-                      setSelectedArchive(updated);
-                      setRecalcStatus(`OK: ${updated.totalRevenue}€`);
-                    } else {
-                      setRecalcStatus('OK mais event non trouvé dans le store');
-                    }
+                    if (updated) setSelectedArchive(updated);
+                    setRecalcStatus(`Orders: ${result?.orders ?? '?'}, Served/Settled: ${result?.served ?? '?'}, CA: ${result?.revenue ?? 0}€`);
                   } catch (err: any) {
                     setRecalcStatus(`ERREUR: ${err?.message || String(err)}`);
                   } finally {
