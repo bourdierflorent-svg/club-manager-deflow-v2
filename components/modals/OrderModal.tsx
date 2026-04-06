@@ -131,22 +131,24 @@ const OrderModal: React.FC<OrderModalProps> = memo(({
   // Produits filtrés par catégorie
   const filteredProducts = products.filter(p => p.category === form.selectedCategory);
 
-  // Handlers
-  const handleClose = useCallback(() => {
+  // Handlers — pas de useCallback chaîné pour éviter les closures stale
+  const resetAndClose = () => {
     basket.clearBasket();
     form.reset();
+    setMobileView('menu');
     isSubmittingRef.current = false;
     onClose();
-  }, [basket, form, onClose]);
+  };
 
-  const handleSendOrder = useCallback(() => {
+  const handleClose = resetAndClose;
+
+  const handleSendOrder = () => {
     if (!client || isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     basket.submitOrder(client);
     onSuccess?.();
-    // Reset complet + fermeture (clearBasket, form.reset, isSubmittingRef, onClose)
-    handleClose();
-  }, [client, basket, onSuccess, handleClose]);
+    resetAndClose();
+  };
 
   const handleAddToBasket = useCallback(() => {
     if (!form.selectedProduct) return;
