@@ -4,7 +4,7 @@
  * Permet d'installer un client existant (en attente) ou de creer un nouveau client
  */
 
-import React, { memo, useCallback, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, UserPlus, UserCheck, ArrowLeft, Search, Clock } from 'lucide-react';
 import { Table, User, Client } from '../../src/types';
 
@@ -32,7 +32,7 @@ interface FreeTableModalProps {
 // COMPOSANT
 // ============================================
 
-const FreeTableModal: React.FC<FreeTableModalProps> = memo(({
+const FreeTableModal: React.FC<FreeTableModalProps> = ({
   isOpen,
   onClose,
   table,
@@ -54,7 +54,7 @@ const FreeTableModal: React.FC<FreeTableModalProps> = memo(({
   const [clientApporteur, setClientApporteur] = useState('');
   const [selectedWaiterId, setSelectedWaiterId] = useState(autoWaiterId || '');
 
-  const resetAndClose = useCallback(() => {
+  const resetAndClose = () => {
     setStep('choice');
     setSelectedClientId('');
     setExistingWaiterId(autoWaiterId || '');
@@ -63,13 +63,13 @@ const FreeTableModal: React.FC<FreeTableModalProps> = memo(({
     setClientApporteur('');
     setSelectedWaiterId(autoWaiterId || '');
     onClose();
-  }, [onClose, autoWaiterId]);
+  };
 
-  const goBack = useCallback(() => {
+  const goBack = () => {
     setStep('choice');
     setSelectedClientId('');
     setSearchExisting('');
-  }, []);
+  };
 
   // Filtered pending clients
   const filteredPending = useMemo(() => {
@@ -78,13 +78,13 @@ const FreeTableModal: React.FC<FreeTableModalProps> = memo(({
     return pendingClients.filter(c => c.name.toLowerCase().includes(q));
   }, [pendingClients, searchExisting]);
 
-  const handleAssignExisting = useCallback(() => {
+  const handleAssignExisting = () => {
     if (!selectedClientId) return;
     onAssignExisting(selectedClientId, existingWaiterId || undefined);
     resetAndClose();
-  }, [selectedClientId, existingWaiterId, onAssignExisting, resetAndClose]);
+  };
 
-  const handleSubmitNewClient = useCallback(() => {
+  const handleSubmitNewClient = () => {
     if (!clientName.trim()) return;
     onCreateClient(
       clientName.trim(),
@@ -92,7 +92,7 @@ const FreeTableModal: React.FC<FreeTableModalProps> = memo(({
       selectedWaiterId || undefined
     );
     resetAndClose();
-  }, [clientName, clientApporteur, selectedWaiterId, onCreateClient, resetAndClose]);
+  };
 
   if (!isOpen || !table) return null;
 
@@ -311,8 +311,6 @@ const FreeTableModal: React.FC<FreeTableModalProps> = memo(({
       </div>
     </div>
   );
-});
-
-FreeTableModal.displayName = 'FreeTableModal';
+};
 
 export default FreeTableModal;

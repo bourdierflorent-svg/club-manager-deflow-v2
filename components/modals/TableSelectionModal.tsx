@@ -107,7 +107,7 @@ TableButton.displayName = 'TableButton';
 // 🎯 COMPOSANT PRINCIPAL
 // ============================================
 
-const TableSelectionModal: React.FC<TableSelectionModalProps> = memo(({
+const TableSelectionModal: React.FC<TableSelectionModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
@@ -211,8 +211,6 @@ const TableSelectionModal: React.FC<TableSelectionModalProps> = memo(({
       </div>
     </div>
   );
-});
-
-TableSelectionModal.displayName = 'TableSelectionModal';
+};
 
 export default TableSelectionModal;

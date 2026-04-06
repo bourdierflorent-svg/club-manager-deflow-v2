@@ -3,7 +3,7 @@
  * Modal de détail d'un client avec ses commandes et actions
  */
 
-import React, { memo, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Client, Table, Order, OrderStatus } from '../../src/types';
 import { OrderCard } from '../ui';
 import { X, Handshake, UserMinus, Link, Unlink, LogOut, Lock, RotateCw, XCircle } from 'lucide-react';
@@ -43,7 +43,7 @@ interface ClientDetailModalProps {
 // 🎯 COMPOSANT PRINCIPAL
 // ============================================
 
-const ClientDetailModal: React.FC<ClientDetailModalProps> = memo(({
+const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   isOpen,
   client,
   table,
@@ -256,8 +256,6 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = memo(({
       </div>
     </div>
   );
-});
-
-ClientDetailModal.displayName = 'ClientDetailModal';
+};
 
 export default ClientDetailModal;

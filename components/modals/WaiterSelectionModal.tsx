@@ -63,7 +63,7 @@ WaiterButton.displayName = 'WaiterButton';
 // 🎯 COMPOSANT PRINCIPAL
 // ============================================
 
-const WaiterSelectionModal: React.FC<WaiterSelectionModalProps> = memo(({
+const WaiterSelectionModal: React.FC<WaiterSelectionModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
@@ -141,8 +141,6 @@ const WaiterSelectionModal: React.FC<WaiterSelectionModalProps> = memo(({
       </div>
     </div>
   );
-});
-
-WaiterSelectionModal.displayName = 'WaiterSelectionModal';
+};
 
 export default WaiterSelectionModal;

@@ -3,7 +3,7 @@
  * Modal pour créer un nouveau client
  */
 
-import React, { memo, useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { X } from 'lucide-react';
 
 // ============================================
@@ -21,7 +21,7 @@ interface NewClientModalProps {
 // 🎯 COMPOSANT PRINCIPAL
 // ============================================
 
-const NewClientModal: React.FC<NewClientModalProps> = memo(({
+const NewClientModal: React.FC<NewClientModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
@@ -100,8 +100,6 @@ const NewClientModal: React.FC<NewClientModalProps> = memo(({
       </div>
     </div>
   );
-});
-
-NewClientModal.displayName = 'NewClientModal';
+};
 
 export default NewClientModal;

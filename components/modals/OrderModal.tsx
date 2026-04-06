@@ -105,7 +105,7 @@ SizeButton.displayName = 'SizeButton';
 // 🎯 COMPOSANT PRINCIPAL
 // ============================================
 
-const OrderModal: React.FC<OrderModalProps> = memo(({
+const OrderModal: React.FC<OrderModalProps> = ({
   isOpen,
   client,
   products,
@@ -381,8 +381,6 @@ const OrderModal: React.FC<OrderModalProps> = memo(({
       </div>
     </div>
   );
-});
-
-OrderModal.displayName = 'OrderModal';
+};
 
 export default OrderModal;
