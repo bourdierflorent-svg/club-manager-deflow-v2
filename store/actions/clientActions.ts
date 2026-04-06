@@ -1,6 +1,6 @@
 import type { StoreGet, StoreSet } from '../types';
 import {
-  TableStatus, OrderStatus, ReservationStatus, HubCustomerSnapshot, HubApporteurSnapshot
+  TableStatus, OrderStatus, ReservationStatus, ClientStatus, HubCustomerSnapshot, HubApporteurSnapshot
 } from '../../src/types';
 import { validateName, secureLog, secureError, writeVisitToHub, createHubCustomerAuto } from '../../src/utils';
 import { supabase } from '../../supabaseConfig';
@@ -482,6 +482,22 @@ export const createClientActions = (set: StoreSet, get: StoreGet) => ({
       await recalculateEventRevenue(currentEvent.id);
 
       logSync(`Client ${c.name} encaisse: ${total}E, tables liberees`);
+
+      // Mise à jour optimiste du store local (sans attendre le realtime)
+      const updatedClients = get().clients.map(cl =>
+        cl.id === cId ? { ...cl, status: ClientStatus.CLOSED, totalSpent: total, lastSettledAt: new Date().toISOString() } : cl
+      );
+      const updatedOrders = get().orders.map(o =>
+        o.clientId === cId && o.status === OrderStatus.SERVED ? { ...o, status: OrderStatus.SETTLED } : o
+      );
+      const freedTableIds = [
+        ...(c.tableId && isTableFreeableBy(clients, cId, c.tableId) ? [c.tableId] : []),
+        ...(c.linkedTableIds || []).filter(tId => isTableFreeableBy(clients, cId, tId)),
+      ];
+      const updatedTables = get().tables.map(t =>
+        freedTableIds.includes(t.id) ? { ...t, status: TableStatus.AVAILABLE } : t
+      );
+      set({ clients: updatedClients, orders: updatedOrders, tables: updatedTables, lastSyncTime: new Date().toISOString() });
 
       // Fire-and-forget Hub visit
       if (c.customerId) {

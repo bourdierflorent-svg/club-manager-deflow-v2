@@ -5,7 +5,7 @@
  * Utilise useOrderBasket et useOrderForm pour la gestion d'état
  */
 
-import React, { memo, useCallback, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Client, Product } from '../../src/types';
 import { useOrderBasket, useOrderForm } from '../../src/hooks/useOrderActions';
 import { BottleSize } from '../../src/utils';
@@ -117,6 +117,14 @@ const OrderModal: React.FC<OrderModalProps> = memo(({
   const isSubmittingRef = useRef(false);
   const [mobileView, setMobileView] = useState<'menu' | 'basket'>('menu');
 
+  // Reset état quand le modal s'ouvre pour un nouveau client (panier → menu, ref submit)
+  useEffect(() => {
+    if (isOpen) {
+      setMobileView('menu');
+      isSubmittingRef.current = false;
+    }
+  }, [isOpen, client?.id]);
+
   // Catégories uniques
   const categories = [...new Set(products.map(p => p.category))];
 
@@ -135,13 +143,10 @@ const OrderModal: React.FC<OrderModalProps> = memo(({
     if (!client || isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     basket.submitOrder(client);
-    basket.clearBasket();
-    form.reset();
     onSuccess?.();
-    onClose();
-    // Reset après fermeture pour permettre une prochaine commande
-    setTimeout(() => { isSubmittingRef.current = false; }, 300);
-  }, [client, basket, form, onSuccess, onClose]);
+    // Reset complet + fermeture (clearBasket, form.reset, isSubmittingRef, onClose)
+    handleClose();
+  }, [client, basket, onSuccess, handleClose]);
 
   const handleAddToBasket = useCallback(() => {
     if (!form.selectedProduct) return;

@@ -91,6 +91,10 @@ const BarmaidDashboard: React.FC = () => {
     setSelectedTable(null);
   }, []);
 
+  const closeFreeTableModal = useCallback(() => {
+    setFreeTableForAction(null);
+  }, []);
+
   const openClientDetail = useCallback((client: Client, table?: Table) => {
     setSelectedClient(client);
     setSelectedTable(table || null);
@@ -121,6 +125,7 @@ const BarmaidDashboard: React.FC = () => {
       ? freeTableForAction.number
       : `Table ${freeTableForAction.number}`;
     addNotification({ type: 'success', title: 'CLIENT INSTALLÉ', message: `${name} → ${tableLabel}` });
+    setFreeTableForAction(null);
   }, [freeTableForAction, createClient, currentUser, addNotification]);
 
   const handleFreeTableAssignExisting = useCallback((clientId: string, waiterId?: string) => {
@@ -128,6 +133,7 @@ const BarmaidDashboard: React.FC = () => {
     assignClient(clientId, freeTableForAction.id, waiterId || currentUser.id);
     const client = clients.find(c => c.id === clientId);
     addNotification({ type: 'success', title: 'CLIENT INSTALLÉ', message: `${client?.name || ''} → ${freeTableForAction.number}` });
+    setFreeTableForAction(null);
   }, [freeTableForAction, currentUser, assignClient, clients, addNotification]);
 
   // Clients en attente (pas de table)
@@ -136,9 +142,9 @@ const BarmaidDashboard: React.FC = () => {
     [clients]
   );
 
-  const handleSettleAction = useCallback(() => {
+  const handleSettleAction = useCallback(async () => {
     if (!selectedClient) return;
-    settlePayment(selectedClient.id);
+    await settlePayment(selectedClient.id);
     addNotification({ type: 'success', title: 'ENCAISSÉ', message: `${selectedClient.name} encaissé avec succès` });
     closeModal();
   }, [selectedClient, settlePayment, addNotification, closeModal]);
@@ -274,7 +280,7 @@ const BarmaidDashboard: React.FC = () => {
       {/* MODAL TABLE LIBRE */}
       <FreeTableModal
         isOpen={!!freeTableForAction}
-        onClose={() => setFreeTableForAction(null)}
+        onClose={closeFreeTableModal}
         table={freeTableForAction}
         pendingClients={pendingClientsForTable}
         onAssignExisting={handleFreeTableAssignExisting}

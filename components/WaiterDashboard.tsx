@@ -256,6 +256,10 @@ const WaiterDashboard: React.FC = () => {
     setIsSelectedTableLinked(false);
   }, []);
 
+  const closeFreeTableModal = useCallback(() => {
+    setFreeTableForAction(null);
+  }, []);
+
   const openClientDetail = useCallback((client: Client, table?: Table, isLinked: boolean = false) => {
     setSelectedClient(client);
     setSelectedTable(table || null);
@@ -925,7 +929,7 @@ const WaiterDashboard: React.FC = () => {
 
       <FreeTableModal
         isOpen={!!freeTableForAction}
-        onClose={() => setFreeTableForAction(null)}
+        onClose={closeFreeTableModal}
         table={freeTableForAction}
         pendingClients={pendingClientsForTable}
         onAssignExisting={handleFreeTableAssignExisting}
