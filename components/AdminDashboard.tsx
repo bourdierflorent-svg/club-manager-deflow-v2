@@ -47,6 +47,7 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'service' | 'team' | 'logs' | 'evenings' | 'config' | 'reservations' | 'caisse' | 'clients' | 'recapbouteilles'>('overview');
   const [isEditMapMode, setIsEditMapMode] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
+  const [recalcStatus, setRecalcStatus] = useState('');
   
   // --- MODALS ---
   const [showUserModal, setShowUserModal] = useState(false);
@@ -1071,14 +1072,24 @@ const AdminDashboard: React.FC = () => {
               <button
                 onClick={async () => {
                   setRecalculating(true);
+                  setRecalcStatus('Lancement...');
                   try {
+                    if (typeof recoverEvent !== 'function') {
+                      setRecalcStatus('ERREUR: recoverEvent non disponible');
+                      return;
+                    }
+                    setRecalcStatus(`Recalcul event ${selectedArchive.id.slice(0, 8)}...`);
                     const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout 15s')), 15000));
                     await Promise.race([recoverEvent(selectedArchive.id), timeout]);
                     const updated = useStore.getState().pastEvents.find(e => e.id === selectedArchive.id);
-                    if (updated) setSelectedArchive(updated);
-                    addNotification({ type: 'success', title: 'RECALCUL OK', message: `Soirée recalculée : ${updated?.totalRevenue ?? 0}€` });
+                    if (updated) {
+                      setSelectedArchive(updated);
+                      setRecalcStatus(`OK: ${updated.totalRevenue}€`);
+                    } else {
+                      setRecalcStatus('OK mais event non trouvé dans le store');
+                    }
                   } catch (err: any) {
-                    addNotification({ type: 'error', title: 'ERREUR RECALCUL', message: err?.message || 'Échec du recalcul' });
+                    setRecalcStatus(`ERREUR: ${err?.message || String(err)}`);
                   } finally {
                     setRecalculating(false);
                   }
@@ -1088,6 +1099,11 @@ const AdminDashboard: React.FC = () => {
               >
                 <RotateCcw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} /> {recalculating ? 'Recalcul...' : 'Recalculer'}
               </button>
+              {recalcStatus && (
+                <div className={`px-4 py-2 rounded-lg text-xs font-mono ${recalcStatus.startsWith('ERREUR') ? 'bg-red-500/20 text-red-400' : recalcStatus.startsWith('OK') ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                  {recalcStatus}
+                </div>
+              )}
             </div>
             {archiveWaiterStats.length > 0 && (
               <div className="mb-8"><h4 className="text-lg font-semibold text-white uppercase mb-4 flex items-center gap-2"><Trophy className="w-5 h-5 text-zinc-400" /> Classement Serveurs</h4><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{archiveWaiterStats.map((stat, idx) => (<div key={idx} className="bg-zinc-800 p-4 rounded-xl flex items-center gap-3"><span className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0 ${idx === 0 ? 'bg-zinc-700 text-zinc-400' : 'bg-zinc-800 text-zinc-500'}`}>{idx + 1}</span><div className="min-w-0"><p className="font-bold text-white uppercase truncate">{stat.name}</p><p className="font-semibold text-zinc-400 text-sm">{formatCurrency(stat.revenue)}</p></div></div>))}</div></div>
