@@ -204,14 +204,16 @@ const AdminDashboard: React.FC = () => {
     setArchiveToDelete(event);
   }, []);
 
-  const handleConfirmDeleteArchive = useCallback(async () => {
-    if (archiveToDelete) {
-      await deleteEvent(archiveToDelete.id);
-      addNotification({ type: 'success', title: 'ARCHIVE SUPPRIMEE', message: `La soiree "${archiveToDelete.name || 'Soiree'}" a ete supprimee.` });
-      setArchiveToDelete(null);
-      setSelectedArchive(null);
-    }
-  }, [archiveToDelete, deleteEvent, addNotification]);
+  const handleConfirmDeleteArchive = async () => {
+    if (!archiveToDelete) return;
+    const name = archiveToDelete.name || 'Soiree';
+    const id = archiveToDelete.id;
+    // Fermer le modal AVANT l'action async
+    setArchiveToDelete(null);
+    setSelectedArchive(null);
+    await deleteEvent(id);
+    addNotification({ type: 'success', title: 'ARCHIVE SUPPRIMEE', message: `La soiree "${name}" a ete supprimee.` });
+  };
 
   // --- RECAP BOUTEILLES (dernier récap archivé) ---
   const lastEventBottles = useMemo(() => {
