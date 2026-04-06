@@ -310,6 +310,27 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
           set({ clients: (clients || []).map(mapClientFromDb), lastSyncTime: new Date().toISOString() });
           logSync(`Clients synced: ${(clients || []).length} clients`);
 
+          // Cleanup tables orphelines: occupied mais aucun client actif dessus
+          if (tables && clients) {
+            const activeClientTableIds = new Set<string>();
+            for (const c of clients) {
+              if ((c as any).status !== 'closed') {
+                if (c.table_id) activeClientTableIds.add(c.table_id as string);
+                const linked = (c as any).linked_table_ids;
+                if (Array.isArray(linked)) linked.forEach((id: string) => activeClientTableIds.add(id));
+              }
+            }
+            const orphanTables = tables.filter((t: any) =>
+              t.status === 'occupied' && !activeClientTableIds.has(t.id)
+            );
+            if (orphanTables.length > 0) {
+              logSync(`Nettoyage ${orphanTables.length} table(s) orpheline(s)`);
+              for (const t of orphanTables) {
+                await supabase.from('event_tables').update({ status: 'available' }).eq('id', (t as any).id);
+              }
+            }
+          }
+
           // Fetch orders
           const { data: orders } = await supabase
             .from('orders')
