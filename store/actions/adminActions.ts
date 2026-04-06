@@ -145,6 +145,12 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
+  // Alias utilisé par le bouton "Recalculer" dans AdminDashboard
+  recoverEvent: async (eventId: string) => {
+    const self = get() as any;
+    await self.repairArchive(eventId);
+  },
+
   updateArchivedApporteur: async (eventId: string, clientName: string, newApporteur: string) => {
     try {
       const { data: eventData, error } = await supabase
