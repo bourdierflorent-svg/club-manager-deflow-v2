@@ -33,15 +33,43 @@ const LoadingSpinner = () => (
 );
 
 const AdminDashboard: React.FC = () => {
-  const {
-    currentEvent, startEvening, closeEvening, users, addUser, updateUser, deleteUser,
-    orders, clients, tables, auditLogs, pastEvents, resetAllData, addNotification,
-    createClient, transferClient, handoverClient, settlePayment, freeTable, assignClient,
-    currentUser, removeClient, updateClientName, deleteEvent, updateArchivedApporteur,
-    addTable, unassignClient, linkTableToClient, unlinkTableFromClient,
-    reopenClient, cancelOrder, removeItemFromServedOrder, updateServedItemPrice,
-    updateArchivedRecapEntry, deleteArchivedRecapEntry, recoverEvent
-  } = useStore();
+  const currentEvent = useStore(s => s.currentEvent);
+  const startEvening = useStore(s => s.startEvening);
+  const closeEvening = useStore(s => s.closeEvening);
+  const users = useStore(s => s.users);
+  const addUser = useStore(s => s.addUser);
+  const updateUser = useStore(s => s.updateUser);
+  const deleteUser = useStore(s => s.deleteUser);
+  const orders = useStore(s => s.orders);
+  const clients = useStore(s => s.clients);
+  const tables = useStore(s => s.tables);
+  const auditLogs = useStore(s => s.auditLogs);
+  const pastEvents = useStore(s => s.pastEvents);
+  const resetAllData = useStore(s => s.resetAllData);
+  const addNotification = useStore(s => s.addNotification);
+  const createClient = useStore(s => s.createClient);
+  const transferClient = useStore(s => s.transferClient);
+  const handoverClient = useStore(s => s.handoverClient);
+  const settlePayment = useStore(s => s.settlePayment);
+  const freeTable = useStore(s => s.freeTable);
+  const assignClient = useStore(s => s.assignClient);
+  const currentUser = useStore(s => s.currentUser);
+  const removeClient = useStore(s => s.removeClient);
+  const updateClientName = useStore(s => s.updateClientName);
+  const deleteEvent = useStore(s => s.deleteEvent);
+  const updateArchivedApporteur = useStore(s => s.updateArchivedApporteur);
+  const addTable = useStore(s => s.addTable);
+  const unassignClient = useStore(s => s.unassignClient);
+  const linkTableToClient = useStore(s => s.linkTableToClient);
+  const unlinkTableFromClient = useStore(s => s.unlinkTableFromClient);
+  const reopenClient = useStore(s => s.reopenClient);
+  const cancelOrder = useStore(s => s.cancelOrder);
+  const removeItemFromServedOrder = useStore(s => s.removeItemFromServedOrder);
+  const updateServedItemPrice = useStore(s => s.updateServedItemPrice);
+  const updateArchivedRecapEntry = useStore(s => s.updateArchivedRecapEntry);
+  const deleteArchivedRecapEntry = useStore(s => s.deleteArchivedRecapEntry);
+  const recoverEvent = useStore(s => s.recoverEvent);
+  const products = useStore(s => s.products);
   
   // --- ÉTATS ---
   const [activeTab, setActiveTab] = useState<'overview' | 'service' | 'team' | 'logs' | 'evenings' | 'config' | 'reservations' | 'caisse' | 'clients' | 'recapbouteilles'>('overview');

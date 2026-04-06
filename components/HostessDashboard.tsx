@@ -21,14 +21,31 @@ import { useToast, ReservationStatusDropdown } from './ui';
 const HubClientsPage = lazy(() => import('./HubClientsPage'));
 
 const HostessDashboard: React.FC = () => {
-  const {
-    tables, clients, orders, users, createClient, transferClient, assignClient,
-    currentUser, removeClient, updateClientName, updateClientBusinessProvider, unassignClient,
-    pastEvents, updateArchivedApporteur, updateTableStatus, currentEvent,
-    allReservations, markReservationArrived, markReservationRefused, markReservationNoShow,
-    addNotification, linkTableToClient, unlinkTableFromClient,
-    startEvening, closeEvening
-  } = useStore();
+  const tables = useStore(s => s.tables);
+  const clients = useStore(s => s.clients);
+  const orders = useStore(s => s.orders);
+  const users = useStore(s => s.users);
+  const createClient = useStore(s => s.createClient);
+  const transferClient = useStore(s => s.transferClient);
+  const assignClient = useStore(s => s.assignClient);
+  const currentUser = useStore(s => s.currentUser);
+  const removeClient = useStore(s => s.removeClient);
+  const updateClientName = useStore(s => s.updateClientName);
+  const updateClientBusinessProvider = useStore(s => s.updateClientBusinessProvider);
+  const unassignClient = useStore(s => s.unassignClient);
+  const pastEvents = useStore(s => s.pastEvents);
+  const updateArchivedApporteur = useStore(s => s.updateArchivedApporteur);
+  const updateTableStatus = useStore(s => s.updateTableStatus);
+  const currentEvent = useStore(s => s.currentEvent);
+  const allReservations = useStore(s => s.allReservations);
+  const markReservationArrived = useStore(s => s.markReservationArrived);
+  const markReservationRefused = useStore(s => s.markReservationRefused);
+  const markReservationNoShow = useStore(s => s.markReservationNoShow);
+  const addNotification = useStore(s => s.addNotification);
+  const linkTableToClient = useStore(s => s.linkTableToClient);
+  const unlinkTableFromClient = useStore(s => s.unlinkTableFromClient);
+  const startEvening = useStore(s => s.startEvening);
+  const closeEvening = useStore(s => s.closeEvening);
 
   const toast = useToast();
 
