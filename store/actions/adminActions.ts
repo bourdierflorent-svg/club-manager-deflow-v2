@@ -159,10 +159,8 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
         supabase.from('event_tables').select('*').eq('event_id', eventId),
       ]);
 
-      if (ordersRes.error) { notify(`ERREUR orders: ${ordersRes.error.message}`); return; }
-      if (clientsRes.error) { notify(`ERREUR clients: ${clientsRes.error.message}`); return; }
-
-      notify(`Fetch OK: ${ordersRes.data?.length ?? 0} orders, ${clientsRes.data?.length ?? 0} clients`);
+      if (ordersRes.error) return { ok: false, error: `orders: ${ordersRes.error.message}` };
+      if (clientsRes.error) return { ok: false, error: `clients: ${clientsRes.error.message}` };
 
       const archiveOrders = (ordersRes.data || []).map(mapOrderFromDb);
       const archiveClients = (clientsRes.data || []).map(mapClientFromDb);
@@ -170,8 +168,7 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
       const { users } = get();
 
       if (archiveOrders.length === 0) {
-        notify('AUCUNE commande trouvée pour cet event');
-        return;
+        return { ok: false, orders: 0, error: `0 orders pour event ${eventId}` };
       }
 
       const servedSettled = archiveOrders.filter(o => o.status === OrderStatus.SERVED || o.status === OrderStatus.SETTLED);
@@ -196,7 +193,7 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
           };
         });
 
-      if (detailedHistory.length === 0) return;
+      if (detailedHistory.length === 0) return { ok: false, orders: archiveOrders.length, served: servedSettled.length, error: 'detailedHistory vide' };
 
       const totalRevenue = servedSettled.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
 

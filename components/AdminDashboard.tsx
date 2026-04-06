@@ -1083,7 +1083,11 @@ const AdminDashboard: React.FC = () => {
                     const result: any = await Promise.race([recoverEvent(selectedArchive.id), timeout]);
                     const updated = useStore.getState().pastEvents.find(e => e.id === selectedArchive.id);
                     if (updated) setSelectedArchive(updated);
-                    setRecalcStatus(`Orders: ${result?.orders ?? '?'}, Served/Settled: ${result?.served ?? '?'}, CA: ${result?.revenue ?? 0}€`);
+                    if (result?.error) {
+                      setRecalcStatus(`ERREUR: ${result.error} (orders: ${result.orders ?? '?'}, served: ${result.served ?? '?'})`);
+                    } else {
+                      setRecalcStatus(`OK: ${result?.orders ?? '?'} orders, ${result?.served ?? '?'} served, CA: ${result?.revenue ?? 0}€`);
+                    }
                   } catch (err: any) {
                     setRecalcStatus(`ERREUR: ${err?.message || String(err)}`);
                   } finally {
