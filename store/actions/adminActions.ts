@@ -147,28 +147,30 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
 
   // Utilisé par le bouton "Recalculer" dans AdminDashboard — même logique que repairArchive
   recoverEvent: async (eventId: string) => {
+    const notify = (msg: string) => {
+      try { get().addNotification({ type: 'info', title: 'RECALCUL', message: msg }); } catch {}
+    };
     try {
-      logSync(`recoverEvent ${eventId} - Lecture des donnees Supabase...`);
+      notify(`Début recalcul event ${eventId.slice(0, 8)}...`);
 
-      logSync(`recoverEvent: fetch Supabase pour event ${eventId}...`);
       const [ordersRes, clientsRes, tablesRes] = await Promise.all([
         supabase.from('orders').select('*').eq('event_id', eventId),
         supabase.from('clients').select('*').eq('event_id', eventId),
         supabase.from('event_tables').select('*').eq('event_id', eventId),
       ]);
-      logSync(`recoverEvent: fetch OK`);
 
-      if (ordersRes.error) { secureError('[recoverEvent] orders error:', ordersRes.error); return; }
-      if (clientsRes.error) { secureError('[recoverEvent] clients error:', clientsRes.error); return; }
+      if (ordersRes.error) { notify(`ERREUR orders: ${ordersRes.error.message}`); return; }
+      if (clientsRes.error) { notify(`ERREUR clients: ${clientsRes.error.message}`); return; }
+
+      notify(`Fetch OK: ${ordersRes.data?.length ?? 0} orders, ${clientsRes.data?.length ?? 0} clients`);
 
       const archiveOrders = (ordersRes.data || []).map(mapOrderFromDb);
       const archiveClients = (clientsRes.data || []).map(mapClientFromDb);
       const archiveTables = (tablesRes.data || []).map(mapTableFromDb);
       const { users } = get();
 
-      logSync(`recoverEvent: ${archiveOrders.length} commandes, ${archiveClients.length} clients, ${archiveTables.length} tables`);
       if (archiveOrders.length === 0) {
-        logSync(`recoverEvent: AUCUNE commande trouvee pour event ${eventId}`);
+        notify('AUCUNE commande trouvée pour cet event');
         return;
       }
 
@@ -207,13 +209,17 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
         }))
         .filter(s => s.revenue > 0);
 
-      await supabase.from('events').update({
+      notify(`CA calcule: ${totalRevenue}E — ecriture en base...`);
+
+      const { error: updateError } = await supabase.from('events').update({
         detailed_history: detailedHistory,
         waiter_stats: waiterStats,
         client_count: archiveClients.length,
         order_count: archiveOrders.length,
         total_revenue: totalRevenue,
       }).eq('id', eventId);
+
+      if (updateError) { notify(`ERREUR update: ${updateError.message}`); return; }
 
       // Mise à jour optimiste du store local
       const { pastEvents } = get();
@@ -224,8 +230,9 @@ export const createAdminActions = (set: StoreSet, get: StoreGet) => ({
       );
       set({ pastEvents: updatedPastEvents });
 
-      logSync(`recoverEvent OK: ${detailedHistory.length} entrees, CA: ${totalRevenue}E`);
-    } catch (e) {
+      notify(`TERMINÉ: ${detailedHistory.length} entrées, CA: ${totalRevenue}E`);
+    } catch (e: any) {
+      notify(`EXCEPTION: ${e?.message || e}`);
       secureError("[ERROR] [recoverEvent] Error:", e);
     }
   },
