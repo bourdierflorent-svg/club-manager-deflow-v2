@@ -135,9 +135,10 @@ const TableSelectionModal: React.FC<TableSelectionModalProps> = ({
     if (selectedTableId) {
       const tableId = selectedTableId;
       setSelectedTableId('');
+      onClose();
       onSubmit(tableId);
     }
-  }, [selectedTableId, onSubmit]);
+  }, [selectedTableId, onSubmit, onClose]);
 
   const handleClose = useCallback(() => {
     setSelectedTableId('');

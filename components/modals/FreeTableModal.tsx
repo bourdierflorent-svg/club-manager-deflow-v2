@@ -82,22 +82,23 @@ const FreeTableModal: React.FC<FreeTableModalProps> = ({
     return pendingClients.filter(c => c.name.toLowerCase().includes(q));
   }, [pendingClients, searchExisting]);
 
-  // Fermeture : UNIQUEMENT onClose(), pas de setState enfant mélangé
+  // Fermeture AVANT action pour garantir la fermeture du modal
   const handleAssignExisting = () => {
     if (!selectedClientId) return;
-    onAssignExisting(selectedClientId, existingWaiterId || undefined);
+    const clientId = selectedClientId;
+    const waiterId = existingWaiterId || undefined;
     onClose();
+    onAssignExisting(clientId, waiterId);
   };
 
   const handleSubmitNewClient = () => {
     if (!clientName.trim() || isSubmitting) return;
     setIsSubmitting(true);
-    onCreateClient(
-      clientName.trim(),
-      clientApporteur.trim() || undefined,
-      selectedWaiterId || undefined
-    );
+    const name = clientName.trim();
+    const apporteur = clientApporteur.trim() || undefined;
+    const waiterId = selectedWaiterId || undefined;
     onClose();
+    onCreateClient(name, apporteur, waiterId);
   };
 
   if (!isOpen || !table) return null;
