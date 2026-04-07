@@ -120,20 +120,24 @@ const BarmaidDashboard: React.FC = () => {
   // --- HANDLERS FREE TABLE MODAL ---
   const handleFreeTableCreateClient = useCallback((name: string, apporteur?: string, waiterId?: string) => {
     if (!freeTableForAction) return;
-    createClient(name, apporteur || '', freeTableForAction.id, waiterId || currentUser?.id || '');
+    const tableId = freeTableForAction.id;
     const tableLabel = freeTableForAction.number.toUpperCase().startsWith('BAR')
       ? freeTableForAction.number
       : `Table ${freeTableForAction.number}`;
-    addNotification({ type: 'success', title: 'CLIENT INSTALLÉ', message: `${name} → ${tableLabel}` });
     setFreeTableForAction(null);
+    createClient(name, apporteur || '', tableId, waiterId || currentUser?.id || '');
+    addNotification({ type: 'success', title: 'CLIENT INSTALLÉ', message: `${name} → ${tableLabel}` });
   }, [freeTableForAction, createClient, currentUser, addNotification]);
 
   const handleFreeTableAssignExisting = useCallback((clientId: string, waiterId?: string) => {
     if (!freeTableForAction || !currentUser) return;
-    assignClient(clientId, freeTableForAction.id, waiterId || currentUser.id);
+    const tableId = freeTableForAction.id;
+    const tableNumber = freeTableForAction.number;
     const client = clients.find(c => c.id === clientId);
-    addNotification({ type: 'success', title: 'CLIENT INSTALLÉ', message: `${client?.name || ''} → ${freeTableForAction.number}` });
+    const clientName = client?.name || '';
     setFreeTableForAction(null);
+    assignClient(clientId, tableId, waiterId || currentUser.id);
+    addNotification({ type: 'success', title: 'CLIENT INSTALLÉ', message: `${clientName} → ${tableNumber}` });
   }, [freeTableForAction, currentUser, assignClient, clients, addNotification]);
 
   // Clients en attente (pas de table)
@@ -144,16 +148,19 @@ const BarmaidDashboard: React.FC = () => {
 
   const handleSettleAction = useCallback(async () => {
     if (!selectedClient) return;
-    await settlePayment(selectedClient.id);
-    addNotification({ type: 'success', title: 'ENCAISSÉ', message: `${selectedClient.name} encaissé avec succès` });
+    const clientId = selectedClient.id;
+    const clientName = selectedClient.name;
     closeModal();
+    await settlePayment(clientId);
+    addNotification({ type: 'success', title: 'ENCAISSÉ', message: `${clientName} encaissé avec succès` });
   }, [selectedClient, settlePayment, addNotification, closeModal]);
 
   const handleFreeTableAction = useCallback(async () => {
     if (!selectedClient?.tableId) return;
-    await freeTable(selectedClient.tableId);
-    addNotification({ type: 'success', title: 'TABLE LIBÉRÉE', message: `Table libérée avec succès` });
+    const tableId = selectedClient.tableId;
     closeModal();
+    await freeTable(tableId);
+    addNotification({ type: 'success', title: 'TABLE LIBÉRÉE', message: `Table libérée avec succès` });
   }, [selectedClient?.tableId, freeTable, addNotification, closeModal]);
 
   const handleConfirmCancelOrder = useCallback(async () => {
