@@ -339,40 +339,55 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
           set({ orders: (orders || []).map(mapOrderFromDb), lastSyncTime: new Date().toISOString() });
           logSync(`Orders synced: ${(orders || []).length} commandes`);
 
-          // Realtime: event_tables
-          const tablesChannel = supabase.channel(`event-tables-${eventId}`)
-            .on('postgres_changes', {
-              event: '*', schema: 'public', table: 'event_tables',
-              filter: `event_id=eq.${eventId}`
-            }, async () => {
-              const { data } = await supabase.from('event_tables').select('*').eq('event_id', eventId);
-              if (data) set({ tables: data.map(mapTableFromDb), lastSyncTime: new Date().toISOString() });
-            })
-            .subscribe();
+          // Helper: subscribe with auto-reconnect on channel error/timeout
+          const subscribeWithRecovery = (
+            channelName: string,
+            table: string,
+            onData: (data: any[]) => void,
+            fetchFn: () => Promise<{ data: any[] | null }>
+          ) => {
+            const channel = supabase.channel(channelName)
+              .on('postgres_changes', {
+                event: '*', schema: 'public', table,
+                filter: `event_id=eq.${eventId}`
+              }, async () => {
+                const { data } = await fetchFn();
+                if (data) onData(data);
+              })
+              .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                  secureLog(`[Realtime] ${channelName} ${status} — reconnecting in 3s`);
+                  setTimeout(() => {
+                    try { supabase.removeChannel(channel); } catch (_) { /* ignore */ }
+                    const idx = eventDataChannels.indexOf(channel);
+                    if (idx > -1) eventDataChannels.splice(idx, 1);
+                    const newChannel = subscribeWithRecovery(channelName, table, onData, fetchFn);
+                    eventDataChannels.push(newChannel);
+                  }, 3000);
+                }
+              });
+            return channel;
+          };
+
+          const tablesChannel = subscribeWithRecovery(
+            `event-tables-${eventId}`, 'event_tables',
+            (data) => set({ tables: data.map(mapTableFromDb), lastSyncTime: new Date().toISOString() }),
+            () => supabase.from('event_tables').select('*').eq('event_id', eventId)
+          );
           eventDataChannels.push(tablesChannel);
 
-          // Realtime: clients
-          const clientsChannel = supabase.channel(`event-clients-${eventId}`)
-            .on('postgres_changes', {
-              event: '*', schema: 'public', table: 'clients',
-              filter: `event_id=eq.${eventId}`
-            }, async () => {
-              const { data } = await supabase.from('clients').select('*').eq('event_id', eventId);
-              if (data) set({ clients: data.map(mapClientFromDb), lastSyncTime: new Date().toISOString() });
-            })
-            .subscribe();
+          const clientsChannel = subscribeWithRecovery(
+            `event-clients-${eventId}`, 'clients',
+            (data) => set({ clients: data.map(mapClientFromDb), lastSyncTime: new Date().toISOString() }),
+            () => supabase.from('clients').select('*').eq('event_id', eventId)
+          );
           eventDataChannels.push(clientsChannel);
 
-          // Realtime: orders
-          const ordersChannel = supabase.channel(`event-orders-${eventId}`)
-            .on('postgres_changes', {
-              event: '*', schema: 'public', table: 'orders',
-              filter: `event_id=eq.${eventId}`
-            }, async () => {
-              const { data } = await supabase.from('orders').select('*').eq('event_id', eventId);
-              if (data) set({ orders: data.map(mapOrderFromDb), lastSyncTime: new Date().toISOString() });
-            })
-            .subscribe();
+          const ordersChannel = subscribeWithRecovery(
+            `event-orders-${eventId}`, 'orders',
+            (data) => set({ orders: data.map(mapOrderFromDb), lastSyncTime: new Date().toISOString() }),
+            () => supabase.from('orders').select('*').eq('event_id', eventId)
+          );
           eventDataChannels.push(ordersChannel);
         };
 
@@ -505,10 +520,39 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
 
     init();
 
-    // Cleanup function
+    // --- Refetch data when app returns to foreground (PWA / mobile) ---
+    let lastVisibilityRefetch = 0;
+    const REFETCH_COOLDOWN = 2000;
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastVisibilityRefetch < REFETCH_COOLDOWN) return;
+      lastVisibilityRefetch = now;
+
+      const eventId = currentEventId;
+      if (!eventId) return;
+
+      logSync('App visible — refetch event data (orders, clients, tables)');
+      try {
+        const [ordersRes, clientsRes, tablesRes] = await Promise.all([
+          supabase.from('orders').select('*').eq('event_id', eventId),
+          supabase.from('clients').select('*').eq('event_id', eventId),
+          supabase.from('event_tables').select('*').eq('event_id', eventId),
+        ]);
+        if (ordersRes.data) set({ orders: ordersRes.data.map(mapOrderFromDb), lastSyncTime: new Date().toISOString() });
+        if (clientsRes.data) set({ clients: clientsRes.data.map(mapClientFromDb), lastSyncTime: new Date().toISOString() });
+        if (tablesRes.data) set({ tables: tablesRes.data.map(mapTableFromDb), lastSyncTime: new Date().toISOString() });
+      } catch (e) {
+        secureError('[visibility-refetch] Error:', e);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       cleanedUp = true;
       logSync('Cleanup des listeners Supabase');
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       supabase.removeAllChannels();
     };
   },
