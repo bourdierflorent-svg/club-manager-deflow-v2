@@ -143,7 +143,7 @@ async function enrichPastEventsWithRevenue(events: ReturnType<typeof mapEventFro
           return {
             clientName: client?.name || 'Client de passage',
             tableNumber: tableInfo?.number || '?',
-            zone: tableInfo?.zone || 'club',
+            zone: (tableInfo?.zone || 'club') as "club" | "bar",
             apporteur: client?.business_provider || '-',
             waiterName: waiterName.toUpperCase(),
             totalAmount: Number(o.total_amount) || 0,
@@ -196,6 +196,8 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
     // We run the async init inside a sync wrapper (returns cleanup)
     let cleanedUp = false;
     const channels: ReturnType<typeof supabase.channel>[] = [];
+    let currentEventId: string | null = null;
+    const eventDataChannels: ReturnType<typeof supabase.channel>[] = [];
 
     const init = async () => {
       try {
@@ -280,8 +282,6 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
         channels.push(reservationsChannel);
 
         // --- Track active event and its sub-data ---
-        let currentEventId: string | null = null;
-        const eventDataChannels: ReturnType<typeof supabase.channel>[] = [];
 
         const cleanupEventChannels = () => {
           eventDataChannels.forEach(ch => {
@@ -344,7 +344,7 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
             channelName: string,
             table: string,
             onData: (data: any[]) => void,
-            fetchFn: () => Promise<{ data: any[] | null }>
+            fetchFn: () => any
           ) => {
             const channel = supabase.channel(channelName)
               .on('postgres_changes', {

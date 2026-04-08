@@ -397,10 +397,13 @@ const ReservationsManager: React.FC<ReservationsManagerProps> = ({ readOnly = fa
     if (finalApporteurId) extraData.apporteurId = finalApporteurId;
     if (finalApporteurSnapshot) extraData.apporteurSnapshot = finalApporteurSnapshot;
 
+    const guestCount = Number(restFormData.numberOfGuests) || 1;
+
     if (editingReservation) {
       await updateReservation(editingReservation.id, {
         ...restFormData,
         ...extraData,
+        numberOfGuests: guestCount,
         clientName,
         date: selectedDate
       });
@@ -408,6 +411,7 @@ const ReservationsManager: React.FC<ReservationsManagerProps> = ({ readOnly = fa
       await createReservation({
         ...restFormData,
         ...extraData,
+        numberOfGuests: guestCount,
         clientName,
         date: selectedDate,
         time: ''

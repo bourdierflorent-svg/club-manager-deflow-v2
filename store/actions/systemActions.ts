@@ -1,4 +1,5 @@
 import type { StoreGet, StoreSet } from '../types';
+import type { Notification } from '../../src/types';
 import { OrderStatus } from '../../src/types';
 import {
   createSession, clearSession,
@@ -72,6 +73,27 @@ export const createSystemActions = (set: StoreSet, get: StoreGet) => ({
       localStorage.clear();
       window.location.reload();
     } catch (e) { secureError('[resetAllData] Error:', e); }
+  },
+
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => {
+    const newNotif: Notification = {
+      ...notification,
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+    };
+    set((state) => ({ notifications: [...state.notifications, newNotif] }));
+  },
+
+  removeNotification: (id: string) => {
+    set((state) => ({ notifications: state.notifications.filter(n => n.id !== id) }));
+  },
+
+  updateArchivedRecapEntry: async (eventId: string, entryIndex: number, updatedEntry: any) => {
+    secureLog(`[updateArchivedRecapEntry] Not yet implemented — eventId=${eventId}, entryIndex=${entryIndex}`, updatedEntry);
+  },
+
+  deleteArchivedRecapEntry: async (eventId: string, entryIndex: number) => {
+    secureLog(`[deleteArchivedRecapEntry] Not yet implemented — eventId=${eventId}, entryIndex=${entryIndex}`);
   },
 
 });

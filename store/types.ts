@@ -70,7 +70,7 @@ export interface LittleRoomState {
   updateArchivedApporteur: (eventId: string, clientName: string, newApporteur: string) => Promise<void>;
   updateArchivedRecapEntry: (eventId: string, entryIndex: number, updatedEntry: any) => Promise<void>;
   deleteArchivedRecapEntry: (eventId: string, entryIndex: number) => Promise<void>;
-  recoverEvent: (eventId: string) => Promise<void>;
+  recoverEvent: (eventId: string) => Promise<any>;
   pendingWritesCount: number;
   syncErrorCount: number;
 
