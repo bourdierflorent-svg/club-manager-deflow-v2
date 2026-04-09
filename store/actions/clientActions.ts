@@ -42,11 +42,13 @@ export const createClientActions = (set: StoreSet, get: StoreGet) => ({
       });
 
       // Update client
-      await supabase.from('clients').update({
+      const { error: clientUpdateError } = await supabase.from('clients').update({
         table_id: tId,
-        waiter_id: wId,
+        waiter_id: wId || null,
         status: 'assigned'
       }).eq('id', cId);
+
+      if (clientUpdateError) { secureError("[assignClient] Client update failed:", clientUpdateError); return false; }
 
       // Free old table if different
       if (oldTableId && !isSameTable) {
@@ -169,7 +171,7 @@ export const createClientActions = (set: StoreSet, get: StoreGet) => ({
         business_provider: sanitizedProvider,
         table_id: t || null,
         waiter_id: w || null,
-        status: (t && w) ? 'assigned' : 'pending',
+        status: t ? 'assigned' : 'pending',
         total_spent: 0,
         arrival_at: new Date().toISOString(),
         created_by_id: currentUser?.id || null,

@@ -627,6 +627,7 @@ function mapClientFromDb(row: Record<string, unknown>): Client {
     createdById: (row.created_by_id as string) || '',
     createdByName: (row.created_by_name as string) || '',
     minimumSpend: row.minimum_spend != null ? Number(row.minimum_spend) : undefined,
+    lastSettledAt: (row.last_settled_at as string) || '',
   } as Client;
 }
 
