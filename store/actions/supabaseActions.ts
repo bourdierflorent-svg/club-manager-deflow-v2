@@ -201,9 +201,12 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
 
     // Shared refetch for club-scoped reservations — used by initial load,
     // realtime callback, reconnect-after-error, and visibility refetch.
+    // Uses fetchAllRows to paginate past the 1000-row Supabase default cap,
+    // otherwise migrated historical data silently truncates the list.
     const refetchReservationsForClub = async (cId: string) => {
-      const { data } = await supabase.from('reservations').select('*').eq('club_id', cId);
-      if (!data) return;
+      const data = await fetchAllRows(
+        supabase.from('reservations').select('*').eq('club_id', cId)
+      );
       const mapped = data.map(mapReservationFromDb);
       const activeReservations = mapped.filter(r => {
         const normalizedStatus = normalizeReservationStatus(r.status);
