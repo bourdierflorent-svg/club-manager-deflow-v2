@@ -5,7 +5,8 @@ import { jsPDF } from 'jspdf';
 import { 
   CheckCircle, Clock, History, AlertTriangle, X, StickyNote, Search, Filter, User as UserIcon, Trash2,
   BarChart3, LayoutGrid, TrendingUp, Receipt, MapPin, Edit3, MoreHorizontal, UserPlus, ShoppingCart,
-  ArrowRightLeft, UserCheck, LogOut, RotateCw, Wallet, ChevronLeft, ChevronRight, FileText
+  ArrowRightLeft, UserCheck, LogOut, RotateCw, Wallet, ChevronLeft, ChevronRight, FileText,
+  Download, FileSpreadsheet, Share2
 } from 'lucide-react';
 import TableMap from './TableMap';
 import { formatCurrency, CHART_COLORS, getTableZone } from '../src/utils';
@@ -81,7 +82,7 @@ const ManagerDashboard: React.FC = () => {
   const [clientToEditName, setClientToEditName] = useState<Client | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
 
-  const { exportToPDF: generatePDFReport, exportToExcel: generateExcelReport } = useExport();
+  const { exportToPDF: generatePDFReport, sharePDF: sharePDFReport, exportToExcel: generateExcelReport } = useExport();
   const sortedPastEvents = useMemo(() => [...pastEvents].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [pastEvents]);
 
   const [filterMonth, setFilterMonth] = useState(() => {
@@ -1341,8 +1342,9 @@ const ManagerDashboard: React.FC = () => {
                     <div className="flex items-center justify-between"><span className="text-xs font-semibold text-zinc-500 uppercase">CA Total</span><span className="text-2xl font-semibold text-zinc-400">{formatCurrency(event.totalRevenue)}</span></div>
                   </div>
                   <div className="flex gap-2 mt-4 pt-4 border-t border-zinc-800">
-                    <button onClick={() => generatePDFReport(event)} className="flex-1 flex items-center justify-center gap-2 bg-red-600/20 text-red-400 px-4 py-2 rounded-xl font-semibold uppercase text-xs hover:bg-red-600/30 transition-all">PDF</button>
-                    <button onClick={() => generateExcelReport(event)} className="flex-1 flex items-center justify-center gap-2 bg-emerald-600/20 text-emerald-400 px-4 py-2 rounded-xl font-semibold uppercase text-xs hover:bg-emerald-600/30 transition-all">Excel</button>
+                    <button onClick={() => generatePDFReport(event)} className="flex-1 flex items-center justify-center gap-2 bg-red-600/20 text-red-400 px-4 py-2 rounded-xl font-semibold uppercase text-xs hover:bg-red-600/30 transition-all"><Download className="w-3 h-3" /> PDF</button>
+                    <button onClick={() => sharePDFReport(event)} className="flex-1 flex items-center justify-center gap-2 bg-sky-600/20 text-sky-400 px-4 py-2 rounded-xl font-semibold uppercase text-xs hover:bg-sky-600/30 transition-all"><Share2 className="w-3 h-3" /> Partager</button>
+                    <button onClick={() => generateExcelReport(event)} title="Excel" aria-label="Exporter Excel" className="flex items-center justify-center bg-emerald-600/20 text-emerald-400 px-3 py-2 rounded-xl hover:bg-emerald-600/30 transition-all"><FileSpreadsheet className="w-4 h-4" /></button>
                   </div>
                 </div>
               ))}

@@ -69,7 +69,10 @@ const shareOrDownloadFile = async (
 // ============================================
 
 export interface UseExportReturn {
+  /** Télécharger le PDF (doc.save → download desktop, aperçu Safari sur iPad) */
   exportToPDF: (event: EveningEvent) => Promise<void>;
+  /** Partager le PDF via Web Share API (iOS/Android), fallback download sur desktop */
+  sharePDF: (event: EveningEvent) => Promise<void>;
   exportToExcel: (event: EveningEvent) => Promise<void>;
   exportBoth: (event: EveningEvent) => Promise<void>;
 }
@@ -204,16 +207,25 @@ export const useExport = (options: ExportOptions = {}): UseExportReturn => {
   };
 
   /**
-   * Exporter en PDF - avec séparation Club/Bar
-   * (share sheet sur mobile, download sur desktop)
+   * Construit le document jsPDF pour un événement.
+   * Utilisé à la fois par exportToPDF (download) et sharePDF (share sheet).
    */
-  const exportToPDF = useCallback(async (event: EveningEvent) => {
-    if (!event) return;
+  const buildEventPDF = useCallback((event: EveningEvent): {
+    doc: jsPDF;
+    filename: string;
+    shareMeta: { title: string; text: string };
+  } | null => {
+    if (!event) return null;
 
     const aggregatedData = aggregateEventData(event);
     const clubData = aggregatedData.filter(r => r.zone === 'club');
     const barData = aggregatedData.filter(r => r.zone === 'bar');
     const doc = new jsPDF();
+    const filename = getFilename(event, 'pdf');
+    const shareMeta = {
+      title: `Récap Deflower — ${formatDate(event.date)}`,
+      text: `Récapitulatif de la soirée du ${formatDate(event.date)}`,
+    };
 
     const caTotal = event.totalRevenue || aggregatedData.reduce((acc, r) => acc + r.totalAmount, 0);
     const caClub = clubData.reduce((acc, r) => acc + r.totalAmount, 0);
@@ -326,12 +338,27 @@ export const useExport = (options: ExportOptions = {}): UseExportReturn => {
       );
     }
 
-    const pdfBlob = doc.output('blob') as Blob;
-    await shareOrDownloadFile(pdfBlob, getFilename(event, 'pdf'), {
-      title: `Récap Deflower — ${formatDate(event.date)}`,
-      text: `Récapitulatif de la soirée du ${formatDate(event.date)}`,
-    });
-  }, [includeItems, includeWaiterStats, getFilename]);
+    return { doc, filename, shareMeta };
+  }, [includeItems, getFilename]);
+
+  /**
+   * Télécharger le PDF (doc.save → download sur desktop, aperçu Safari sur iPad).
+   */
+  const exportToPDF = useCallback(async (event: EveningEvent) => {
+    const built = buildEventPDF(event);
+    if (!built) return;
+    built.doc.save(built.filename);
+  }, [buildEventPDF]);
+
+  /**
+   * Partager le PDF via Web Share API (iOS/Android), fallback download sur desktop.
+   */
+  const sharePDF = useCallback(async (event: EveningEvent) => {
+    const built = buildEventPDF(event);
+    if (!built) return;
+    const blob = built.doc.output('blob') as Blob;
+    await shareOrDownloadFile(blob, built.filename, built.shareMeta);
+  }, [buildEventPDF]);
 
   const exportBoth = useCallback(async (event: EveningEvent) => {
     await exportToPDF(event);
@@ -340,6 +367,7 @@ export const useExport = (options: ExportOptions = {}): UseExportReturn => {
 
   return {
     exportToPDF,
+    sharePDF,
     exportToExcel,
     exportBoth,
   };
@@ -350,10 +378,10 @@ export const useExport = (options: ExportOptions = {}): UseExportReturn => {
 // ============================================
 
 export const useQuickExport = () => {
-  const { exportToPDF, exportToExcel } = useExport({
+  const { exportToPDF, sharePDF, exportToExcel } = useExport({
     includeItems: true,
     includeWaiterStats: true,
   });
 
-  return { exportToPDF, exportToExcel };
+  return { exportToPDF, sharePDF, exportToExcel };
 };

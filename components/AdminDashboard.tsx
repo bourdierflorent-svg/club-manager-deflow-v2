@@ -8,7 +8,7 @@ import {
   User as UserIcon, AlertTriangle, Shield, Trash2, RefreshCcw, Mail, Lock, UserCog,
   Zap, Handshake, MapPin, FileSpreadsheet, Trophy, Briefcase, Edit3, RotateCcw,
   LogOut, Plus, UserMinus, Link, RotateCw, Calendar, Pencil, XCircle,
-  ChevronLeft, ChevronRight, Wallet, FileText, Wine
+  ChevronLeft, ChevronRight, Wallet, FileText, Wine, Share2
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -135,7 +135,7 @@ const AdminDashboard: React.FC = () => {
   });
 
   const COLORS = CHART_COLORS;
-  const { exportToPDF, exportToExcel } = useExport();
+  const { exportToPDF, sharePDF, exportToExcel } = useExport();
 
   const availableTables = tables.filter(t => t.status === TableStatus.AVAILABLE);
   const activeWaiters = users.filter(u => u.role === UserRole.WAITER && u.isActive);
@@ -568,6 +568,10 @@ const AdminDashboard: React.FC = () => {
     exportToPDF(event);
   }, [exportToPDF]);
 
+  const sharePDFReport = useCallback((event: EveningEvent) => {
+    sharePDF(event);
+  }, [sharePDF]);
+
   const handleSaveApporteur = useCallback(async () => {
     if (editingApporteur && selectedArchive) {
       await updateArchivedApporteur(selectedArchive.id, editingApporteur.name, editingApporteur.value);
@@ -792,7 +796,8 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <div className="flex gap-2 mt-4 pt-4 border-t border-zinc-800">
                     <button onClick={(e) => { e.stopPropagation(); generatePDFReport(event); }} className="flex-1 flex items-center justify-center gap-2 bg-red-600/20 text-red-400 px-4 py-2 rounded-xl font-semibold uppercase text-xs hover:bg-red-600/30 transition-all"><Download className="w-3 h-3" /> PDF</button>
-                    <button onClick={(e) => { e.stopPropagation(); generateExcelReport(event); }} className="flex-1 flex items-center justify-center gap-2 bg-emerald-600/20 text-emerald-400 px-4 py-2 rounded-xl font-semibold uppercase text-xs hover:bg-emerald-600/30 transition-all"><FileSpreadsheet className="w-3 h-3" /> Excel</button>
+                    <button onClick={(e) => { e.stopPropagation(); sharePDFReport(event); }} className="flex-1 flex items-center justify-center gap-2 bg-sky-600/20 text-sky-400 px-4 py-2 rounded-xl font-semibold uppercase text-xs hover:bg-sky-600/30 transition-all"><Share2 className="w-3 h-3" /> Partager</button>
+                    <button onClick={(e) => { e.stopPropagation(); generateExcelReport(event); }} title="Excel" aria-label="Exporter Excel" className="flex items-center justify-center bg-emerald-600/20 text-emerald-400 px-3 py-2 rounded-xl hover:bg-emerald-600/30 transition-all"><FileSpreadsheet className="w-4 h-4" /></button>
                   </div>
                 </div>
               ))}
@@ -1051,7 +1056,8 @@ const AdminDashboard: React.FC = () => {
               {/* Export buttons */}
               <div className="flex gap-2 sm:gap-3">
                 <button onClick={() => generatePDFReport(selectedArchive)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600/20 text-red-400 px-4 sm:px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-red-600/30 transition-all"><Download className="w-4 h-4" /> PDF</button>
-                <button onClick={() => generateExcelReport(selectedArchive)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600/20 text-emerald-400 px-4 sm:px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-emerald-600/30 transition-all"><FileSpreadsheet className="w-4 h-4" /> Excel</button>
+                <button onClick={() => sharePDFReport(selectedArchive)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-sky-600/20 text-sky-400 px-4 sm:px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-sky-600/30 transition-all"><Share2 className="w-4 h-4" /> Partager</button>
+                <button onClick={() => generateExcelReport(selectedArchive)} title="Excel" aria-label="Exporter Excel" className="flex items-center justify-center bg-emerald-600/20 text-emerald-400 px-3 py-3 rounded-xl hover:bg-emerald-600/30 transition-all"><FileSpreadsheet className="w-4 h-4" /></button>
               </div>
 
               {/* Classement serveurs */}
@@ -1115,7 +1121,8 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div className="flex flex-wrap gap-3 mb-8">
               <button onClick={() => generatePDFReport(selectedArchive)} className="flex items-center gap-2 bg-red-600/20 text-red-400 px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-red-600/30 transition-all"><Download className="w-4 h-4" /> PDF</button>
-              <button onClick={() => generateExcelReport(selectedArchive)} className="flex items-center gap-2 bg-emerald-600/20 text-emerald-400 px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-emerald-600/30 transition-all"><FileSpreadsheet className="w-4 h-4" /> Excel</button>
+              <button onClick={() => sharePDFReport(selectedArchive)} className="flex items-center gap-2 bg-sky-600/20 text-sky-400 px-6 py-3 rounded-xl font-medium uppercase text-xs hover:bg-sky-600/30 transition-all"><Share2 className="w-4 h-4" /> Partager</button>
+              <button onClick={() => generateExcelReport(selectedArchive)} title="Excel" aria-label="Exporter Excel" className="flex items-center justify-center bg-emerald-600/20 text-emerald-400 px-3 py-3 rounded-xl hover:bg-emerald-600/30 transition-all"><FileSpreadsheet className="w-4 h-4" /></button>
               <button
                 onClick={async () => {
                   setRecalculating(true);
