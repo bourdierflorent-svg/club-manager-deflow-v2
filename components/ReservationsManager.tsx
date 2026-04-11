@@ -866,8 +866,10 @@ const ReservationsManager: React.FC<ReservationsManagerProps> = ({ readOnly = fa
                   }
                 };
 
-                // Déterminer si on peut modifier (pas encore final)
+                // Déterminer si on peut modifier — autorise aussi CONFIRME pour permettre
+                // la correction de nom/apporteur après l'arrivée du client (demande chef de rang).
                 const canEdit = normalizedStatus === ReservationStatus.EN_ATTENTE ||
+                                normalizedStatus === ReservationStatus.CONFIRME ||
                                 normalizedStatus === ReservationStatus.VENU;
 
                 return (

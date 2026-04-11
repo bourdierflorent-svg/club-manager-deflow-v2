@@ -3,10 +3,11 @@
  * Modal de détail d'un client avec ses commandes et actions
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Client, Table, Order, OrderStatus } from '../../src/types';
 import { OrderCard } from '../ui';
-import { X, Handshake, UserMinus, Link, Unlink, LogOut, Lock, RotateCw, XCircle } from 'lucide-react';
+import { X, Handshake, UserMinus, Link, Unlink, LogOut, Lock, RotateCw, XCircle, Pencil, Check } from 'lucide-react';
+import { useStore } from '../../store';
 
 // ============================================
 // 📝 TYPES
@@ -37,6 +38,8 @@ interface ClientDetailModalProps {
   canSettle?: boolean;
   // 🗑️ Callback annulation commande (si fourni, affiche un bouton annuler par commande)
   onCancelOrder?: (orderId: string) => void;
+  // ✏️ Permission de renommer le client (chef de rang, admin…)
+  canEditName?: boolean;
 }
 
 // ============================================
@@ -62,7 +65,28 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   hideManagementActions = false, // 🍸 Par défaut false
   canSettle = false, // 💰 Par défaut false
   onCancelOrder,
+  canEditName = false,
 }) => {
+  const updateClientName = useStore(state => state.updateClientName);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState('');
+
+  // Reset le mode edition quand on change de client ou qu'on ferme le modal
+  useEffect(() => {
+    setIsEditingName(false);
+    setEditNameValue('');
+  }, [client?.id, isOpen]);
+
+  const handleSaveName = useCallback(async () => {
+    if (!client || !editNameValue.trim()) return;
+    const trimmed = editNameValue.trim();
+    if (trimmed === client.name) {
+      setIsEditingName(false);
+      return;
+    }
+    await updateClientName(client.id, trimmed);
+    setIsEditingName(false);
+  }, [client, editNameValue, updateClientName]);
   // Calcul du total
   const clientTotal = useMemo(() => {
     if (!client) return 0;
@@ -92,18 +116,59 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
     <div className="fixed inset-0 z-[500] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4">
       <div className="bg-zinc-900 border border-zinc-800 rounded-t-2xl sm:rounded-xl p-8 w-full max-w-lg max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h3 className="text-3xl font-semibold text-white">
-              {client.name}
-            </h3>
+        <div className="flex justify-between items-start mb-6 gap-3">
+          <div className="flex-1 min-w-0">
+            {isEditingName ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editNameValue}
+                  onChange={e => setEditNameValue(e.target.value)}
+                  className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-2xl font-semibold focus:outline-none focus:border-zinc-500"
+                  autoFocus
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleSaveName();
+                    if (e.key === 'Escape') setIsEditingName(false);
+                  }}
+                />
+                <button
+                  onClick={handleSaveName}
+                  className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 shrink-0"
+                  title="Enregistrer"
+                >
+                  <Check className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setIsEditingName(false)}
+                  className="p-2 rounded-lg bg-zinc-800 text-zinc-500 hover:bg-zinc-700 shrink-0"
+                  title="Annuler"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h3 className="text-3xl font-semibold text-white truncate">
+                  {client.name}
+                </h3>
+                {canEditName && !isClosed && (
+                  <button
+                    onClick={() => { setEditNameValue(client.name); setIsEditingName(true); }}
+                    className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-600 hover:text-zinc-400 transition-colors shrink-0"
+                    title="Modifier le nom"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
             <p className={`text-xs font-semibold mt-1 ${isLinkedTable ? 'text-orange-400' : 'text-zinc-400'}`}>
               {tableLabelWithLink}
             </p>
           </div>
-          <button 
-            onClick={onClose} 
-            className="text-zinc-500 hover:text-white transition-colors"
+          <button
+            onClick={onClose}
+            className="text-zinc-500 hover:text-white transition-colors shrink-0"
           >
             <X className="w-8 h-8" />
           </button>

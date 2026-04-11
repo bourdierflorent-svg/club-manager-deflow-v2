@@ -959,6 +959,8 @@ const WaiterDashboard: React.FC = () => {
         canOrder={currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.WAITER || selectedClient?.waiterId === currentUser?.id}
         // 📌 Indique si on est sur une table liée (pour afficher le bon bouton)
         isLinkedTable={isSelectedTableLinked}
+        // ✏️ Chef de rang peut corriger le nom du client
+        canEditName
       />
 
       <OrderModal
