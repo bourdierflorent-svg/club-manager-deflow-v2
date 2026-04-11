@@ -199,6 +199,21 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
     let currentEventId: string | null = null;
     const eventDataChannels: ReturnType<typeof supabase.channel>[] = [];
 
+    // Shared refetch for club-scoped reservations — used by initial load,
+    // realtime callback, reconnect-after-error, and visibility refetch.
+    const refetchReservationsForClub = async (cId: string) => {
+      const { data } = await supabase.from('reservations').select('*').eq('club_id', cId);
+      if (!data) return;
+      const mapped = data.map(mapReservationFromDb);
+      const activeReservations = mapped.filter(r => {
+        const normalizedStatus = normalizeReservationStatus(r.status);
+        return normalizedStatus !== ReservationStatus.CONFIRME &&
+               normalizedStatus !== ReservationStatus.NO_SHOW &&
+               normalizedStatus !== ReservationStatus.RECALE;
+      });
+      set({ reservations: activeReservations, allReservations: mapped, lastSyncTime: new Date().toISOString() });
+    };
+
     const init = async () => {
       try {
         // --- Fetch club_id for Deflow ---
@@ -244,42 +259,37 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
           .subscribe();
         channels.push(usersChannel);
 
-        // --- Initial fetch + Realtime: Reservations (global, not event-specific) ---
-        const { data: allReservations } = await supabase
-          .from('reservations')
-          .select('*')
-          .eq('club_id', clubId);
-        if (allReservations) {
-          const mapped = allReservations.map(mapReservationFromDb);
-          const activeReservations = mapped.filter(r => {
-            const normalizedStatus = normalizeReservationStatus(r.status);
-            return normalizedStatus !== ReservationStatus.CONFIRME &&
-                   normalizedStatus !== ReservationStatus.NO_SHOW &&
-                   normalizedStatus !== ReservationStatus.RECALE;
-          });
-          set({ reservations: activeReservations, allReservations: mapped });
-          logSync(`Reservations synced: ${activeReservations.length} actives / ${mapped.length} total`);
-        }
+        // --- Initial fetch + Realtime: Reservations (club-scoped, with auto-reconnect) ---
+        await refetchReservationsForClub(clubId);
+        logSync('Reservations synced (initial)');
 
-        const reservationsChannel = supabase.channel('reservations-changes')
-          .on('postgres_changes', {
-            event: '*', schema: 'public', table: 'reservations',
-            filter: `club_id=eq.${clubId}`
-          }, async () => {
-            const { data } = await supabase.from('reservations').select('*').eq('club_id', clubId);
-            if (data) {
-              const mapped = data.map(mapReservationFromDb);
-              const activeReservations = mapped.filter(r => {
-                const normalizedStatus = normalizeReservationStatus(r.status);
-                return normalizedStatus !== ReservationStatus.CONFIRME &&
-                       normalizedStatus !== ReservationStatus.NO_SHOW &&
-                       normalizedStatus !== ReservationStatus.RECALE;
-              });
-              set({ reservations: activeReservations, allReservations: mapped });
-            }
-          })
-          .subscribe();
-        channels.push(reservationsChannel);
+        // Recoverable subscription: reconnect automatically on CHANNEL_ERROR / TIMED_OUT / CLOSED.
+        // Without this, Supabase Realtime's periodic replication-slot recycling silently breaks
+        // the client's postgres_changes stream and new inserts never reach the UI until F5.
+        const subscribeReservationsChannel = (): ReturnType<typeof supabase.channel> => {
+          const channel = supabase.channel('reservations-changes')
+            .on('postgres_changes', {
+              event: '*', schema: 'public', table: 'reservations',
+              filter: `club_id=eq.${clubId}`
+            }, () => { refetchReservationsForClub(clubId); })
+            .subscribe((status) => {
+              if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                secureLog(`[Realtime] reservations-changes ${status} — reconnecting in 3s`);
+                setTimeout(() => {
+                  if (cleanedUp) return;
+                  try { supabase.removeChannel(channel); } catch (_) { /* ignore */ }
+                  const idx = channels.indexOf(channel);
+                  if (idx > -1) channels.splice(idx, 1);
+                  // Immediate refetch to catch anything missed while the channel was dead
+                  refetchReservationsForClub(clubId);
+                  const newChannel = subscribeReservationsChannel();
+                  channels.push(newChannel);
+                }, 3000);
+              }
+            });
+          return channel;
+        };
+        channels.push(subscribeReservationsChannel());
 
         // --- Track active event and its sub-data ---
 
@@ -529,6 +539,18 @@ export const createSupabaseActions = (set: StoreSet, get: StoreGet) => ({
       const now = Date.now();
       if (now - lastVisibilityRefetch < REFETCH_COOLDOWN) return;
       lastVisibilityRefetch = now;
+
+      // Always refetch club-scoped reservations — they survive without an active evening,
+      // and the realtime channel can silently die (replication slot recycle).
+      const currentClubId = get().clubId;
+      if (currentClubId) {
+        try {
+          await refetchReservationsForClub(currentClubId);
+          logSync('App visible — reservations refetched');
+        } catch (e) {
+          secureError('[visibility-refetch reservations] Error:', e);
+        }
+      }
 
       const eventId = currentEventId;
       if (!eventId) return;
