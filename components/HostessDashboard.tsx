@@ -6,7 +6,7 @@ import {
 } from '../src/types';
 import {
   Users, Plus, X, List, Map as MapIcon, ArrowRightLeft, TrendingUp, Clock, History,
-  ShieldCheck, User, Trash2, Edit3, FileSpreadsheet, Download, Trophy, Briefcase, Calendar,
+  ShieldCheck, User, Trash2, Edit3, Download, Trophy, Briefcase, Calendar,
   Info, AlertCircle, UserMinus, Link, Play, StopCircle, AlertTriangle, Pencil, Check,
   ChevronLeft, ChevronRight, Share2
 } from 'lucide-react';
@@ -131,7 +131,7 @@ const HostessDashboard: React.FC = () => {
   }, [filterMonth]);
 
   const COLORS = CHART_COLORS;
-  const { exportToPDF, sharePDF, exportToExcel } = useExport();
+  const { exportToPDF, sharePDF } = useExport();
 
   const archiveWaiterStats = useMemo(() => {
     if (!selectedArchive || !selectedArchive.detailedHistory) return [];
@@ -189,10 +189,6 @@ const HostessDashboard: React.FC = () => {
   // =====================================================
   // ✅ HANDLERS OPTIMISÉS AVEC useCallback
   // =====================================================
-
-  const generateExcelReport = useCallback((event: EveningEvent) => {
-    exportToExcel(event);
-  }, [exportToExcel]);
 
   const generatePDFReport = useCallback((event: EveningEvent) => {
     exportToPDF(event);
@@ -769,9 +765,6 @@ const HostessDashboard: React.FC = () => {
                         <button onClick={(e) => { e.stopPropagation(); sharePDFReport(event); }} className="flex-1 flex items-center justify-center gap-2 bg-sky-600/20 text-sky-400 px-4 py-2 rounded-xl font-medium text-xs hover:bg-sky-600/30 transition-all">
                           <Share2 className="w-3 h-3" /> Partager
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); generateExcelReport(event); }} title="Excel" aria-label="Exporter Excel" className="flex items-center justify-center bg-emerald-600/20 text-emerald-400 px-3 py-2 rounded-xl hover:bg-emerald-600/30 transition-all">
-                          <FileSpreadsheet className="w-4 h-4" />
-                        </button>
                       </div>
                     </div>
                   ))}
@@ -790,9 +783,6 @@ const HostessDashboard: React.FC = () => {
                   </button>
                   <button onClick={() => sharePDFReport(selectedArchive)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600/10 text-sky-500 hover:bg-sky-600 hover:text-white transition-all text-xs font-medium">
                     <Share2 className="w-4 h-4" /> Partager
-                  </button>
-                  <button onClick={() => generateExcelReport(selectedArchive)} title="Excel" aria-label="Exporter Excel" className="flex items-center justify-center px-3 py-2 rounded-xl bg-emerald-600/10 text-emerald-500 hover:bg-emerald-600 hover:text-white transition-all">
-                    <FileSpreadsheet className="w-4 h-4" />
                   </button>
                 </div>
               </div>

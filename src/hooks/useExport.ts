@@ -1,14 +1,11 @@
 /**
  * hooks/useExport.ts
- * Hook pour les exports PDF et Excel
- *
- * @description Centralise la logique d'export avec séparation Club/Bar
+ * Hook pour le récap PDF (téléchargement + partage), séparation Club/Bar.
  */
 
 import { useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
 import { EveningEvent } from '../types';
 import { formatDate, aggregateEventData, AggregatedClientData } from '../utils';
 
@@ -32,8 +29,8 @@ const formatPDFCurrency = (amount: number): string => {
  * Tente de partager un fichier via l'API Web Share Level 2 (iOS 15+, Android récent).
  * Fallback sur un download traditionnel via <a download> si non supporté.
  *
- * Pourquoi : sur iPad Safari, doc.save()/XLSX.writeFile() ignorent l'attribut
- * download et ouvrent le fichier dans un onglet de prévisualisation via blob URL.
+ * Pourquoi : sur iPad Safari, doc.save() ignore l'attribut
+ * download et ouvre le fichier dans un onglet de prévisualisation via blob URL.
  * Quand l'utilisateur partage depuis ce viewer, iOS partage l'URL de la page
  * (blob:https://...) au lieu du fichier.
  */
@@ -73,13 +70,10 @@ export interface UseExportReturn {
   exportToPDF: (event: EveningEvent) => Promise<void>;
   /** Partager le PDF via Web Share API (iOS/Android), fallback download sur desktop */
   sharePDF: (event: EveningEvent) => Promise<void>;
-  exportToExcel: (event: EveningEvent) => Promise<void>;
-  exportBoth: (event: EveningEvent) => Promise<void>;
 }
 
 export interface ExportOptions {
   includeItems?: boolean;
-  includeWaiterStats?: boolean;
   filename?: string;
 }
 
@@ -90,95 +84,12 @@ export interface ExportOptions {
 export const useExport = (options: ExportOptions = {}): UseExportReturn => {
   const {
     includeItems = true,
-    includeWaiterStats = false,
   } = options;
 
   const getFilename = useCallback((event: EveningEvent, extension: string): string => {
     const baseName = options.filename || `Deflower_${event.date}`;
     return `${baseName}.${extension}`;
   }, [options.filename]);
-
-  /**
-   * Exporter en Excel - avec séparation Club/Bar
-   * (share sheet sur mobile, download sur desktop)
-   */
-  const exportToExcel = useCallback(async (event: EveningEvent) => {
-    if (!event) return;
-
-    const aggregatedData = aggregateEventData(event);
-    const clubData = aggregatedData.filter(r => r.zone === 'club');
-    const barData = aggregatedData.filter(r => r.zone === 'bar');
-    const caTotal = event.totalRevenue || aggregatedData.reduce((acc, r) => acc + r.totalAmount, 0);
-    const caClub = clubData.reduce((acc, r) => acc + r.totalAmount, 0);
-    const caBar = barData.reduce((acc, r) => acc + r.totalAmount, 0);
-
-    const buildRows = (data: AggregatedClientData[]) => {
-      return data.map((row: AggregatedClientData) => {
-        const itemsList = Object.entries(row.consolidatedItems)
-          .map(([name, qty]) => `${qty}x ${name}`)
-          .join(', ');
-        return {
-          'Table': row.tableNumber,
-          'Client': row.clientName,
-          ...(includeItems ? { 'Consommation': itemsList } : {}),
-          'Serveur': row.waiterName,
-          'Apporteur': row.apporteur || '-',
-          'Total (EUR)': row.totalAmount.toFixed(0),
-        };
-      });
-    };
-
-    const emptyRow = {
-      'Table': '', 'Client': '', ...(includeItems ? { 'Consommation': '' } : {}),
-      'Serveur': '', 'Apporteur': '', 'Total (EUR)': '',
-    };
-
-    const excelData: any[] = [];
-
-    // Section CLUB
-    if (clubData.length > 0) {
-      excelData.push({ ...emptyRow, 'Table': '--- CLUB ---' });
-      excelData.push(...buildRows(clubData));
-      excelData.push({ ...emptyRow, 'Client': 'CA CLUB', 'Total (EUR)': caClub.toFixed(0) });
-      excelData.push(emptyRow);
-    }
-
-    // Section BAR
-    if (barData.length > 0) {
-      excelData.push({ ...emptyRow, 'Table': '--- BAR ---' });
-      excelData.push(...buildRows(barData));
-      excelData.push({ ...emptyRow, 'Client': 'CA BAR', 'Total (EUR)': caBar.toFixed(0) });
-      excelData.push(emptyRow);
-    }
-
-    // CA Total
-    excelData.push({ ...emptyRow, 'Client': 'CA TOTAL', 'Total (EUR)': caTotal.toFixed(0) });
-
-    // Créer le workbook
-    const ws = XLSX.utils.json_to_sheet(excelData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Récapitulatif');
-
-    // Ajouter feuille stats serveurs si demandé
-    if (includeWaiterStats && event.waiterStats && event.waiterStats.length > 0) {
-      const waiterData = event.waiterStats.map(stat => ({
-        'Serveur': stat.name,
-        'CA': stat.revenue,
-        'Tables': stat.tablesCount,
-      }));
-      const wsWaiters = XLSX.utils.json_to_sheet(waiterData);
-      XLSX.utils.book_append_sheet(wb, wsWaiters, 'Stats Serveurs');
-    }
-
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
-    const blob = new Blob([wbout], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
-    await shareOrDownloadFile(blob, getFilename(event, 'xlsx'), {
-      title: `Récap Deflower — ${formatDate(event.date)}`,
-      text: `Récapitulatif de la soirée du ${formatDate(event.date)}`,
-    });
-  }, [includeItems, includeWaiterStats, getFilename]);
 
   /**
    * Formater les données pour le PDF
@@ -360,16 +271,9 @@ export const useExport = (options: ExportOptions = {}): UseExportReturn => {
     await shareOrDownloadFile(blob, built.filename, built.shareMeta);
   }, [buildEventPDF]);
 
-  const exportBoth = useCallback(async (event: EveningEvent) => {
-    await exportToPDF(event);
-    await exportToExcel(event);
-  }, [exportToPDF, exportToExcel]);
-
   return {
     exportToPDF,
     sharePDF,
-    exportToExcel,
-    exportBoth,
   };
 };
 
@@ -378,10 +282,9 @@ export const useExport = (options: ExportOptions = {}): UseExportReturn => {
 // ============================================
 
 export const useQuickExport = () => {
-  const { exportToPDF, sharePDF, exportToExcel } = useExport({
+  const { exportToPDF, sharePDF } = useExport({
     includeItems: true,
-    includeWaiterStats: true,
   });
 
-  return { exportToPDF, sharePDF, exportToExcel };
+  return { exportToPDF, sharePDF };
 };
