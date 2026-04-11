@@ -26,13 +26,52 @@ const formatPDFCurrency = (amount: number): string => {
 };
 
 // ============================================
+// 📤 HELPER: Share via Web Share API with download fallback
+// ============================================
+/**
+ * Tente de partager un fichier via l'API Web Share Level 2 (iOS 15+, Android récent).
+ * Fallback sur un download traditionnel via <a download> si non supporté.
+ *
+ * Pourquoi : sur iPad Safari, doc.save()/XLSX.writeFile() ignorent l'attribut
+ * download et ouvrent le fichier dans un onglet de prévisualisation via blob URL.
+ * Quand l'utilisateur partage depuis ce viewer, iOS partage l'URL de la page
+ * (blob:https://...) au lieu du fichier.
+ */
+const shareOrDownloadFile = async (
+  blob: Blob,
+  filename: string,
+  shareMeta: { title: string; text: string }
+): Promise<void> => {
+  const file = new File([blob], filename, { type: blob.type });
+
+  if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: shareMeta.title, text: shareMeta.text });
+      return;
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      console.warn('[shareOrDownload] navigator.share failed, falling back to download:', e);
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+};
+
+// ============================================
 // TYPES
 // ============================================
 
 export interface UseExportReturn {
-  exportToPDF: (event: EveningEvent) => void;
-  exportToExcel: (event: EveningEvent) => void;
-  exportBoth: (event: EveningEvent) => void;
+  exportToPDF: (event: EveningEvent) => Promise<void>;
+  exportToExcel: (event: EveningEvent) => Promise<void>;
+  exportBoth: (event: EveningEvent) => Promise<void>;
 }
 
 export interface ExportOptions {
@@ -58,8 +97,9 @@ export const useExport = (options: ExportOptions = {}): UseExportReturn => {
 
   /**
    * Exporter en Excel - avec séparation Club/Bar
+   * (share sheet sur mobile, download sur desktop)
    */
-  const exportToExcel = useCallback((event: EveningEvent) => {
+  const exportToExcel = useCallback(async (event: EveningEvent) => {
     if (!event) return;
 
     const aggregatedData = aggregateEventData(event);
@@ -127,7 +167,14 @@ export const useExport = (options: ExportOptions = {}): UseExportReturn => {
       XLSX.utils.book_append_sheet(wb, wsWaiters, 'Stats Serveurs');
     }
 
-    XLSX.writeFile(wb, getFilename(event, 'xlsx'));
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+    const blob = new Blob([wbout], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    await shareOrDownloadFile(blob, getFilename(event, 'xlsx'), {
+      title: `Récap Deflower — ${formatDate(event.date)}`,
+      text: `Récapitulatif de la soirée du ${formatDate(event.date)}`,
+    });
   }, [includeItems, includeWaiterStats, getFilename]);
 
   /**
@@ -158,8 +205,9 @@ export const useExport = (options: ExportOptions = {}): UseExportReturn => {
 
   /**
    * Exporter en PDF - avec séparation Club/Bar
+   * (share sheet sur mobile, download sur desktop)
    */
-  const exportToPDF = useCallback((event: EveningEvent) => {
+  const exportToPDF = useCallback(async (event: EveningEvent) => {
     if (!event) return;
 
     const aggregatedData = aggregateEventData(event);
@@ -278,12 +326,16 @@ export const useExport = (options: ExportOptions = {}): UseExportReturn => {
       );
     }
 
-    doc.save(getFilename(event, 'pdf'));
+    const pdfBlob = doc.output('blob') as Blob;
+    await shareOrDownloadFile(pdfBlob, getFilename(event, 'pdf'), {
+      title: `Récap Deflower — ${formatDate(event.date)}`,
+      text: `Récapitulatif de la soirée du ${formatDate(event.date)}`,
+    });
   }, [includeItems, includeWaiterStats, getFilename]);
 
-  const exportBoth = useCallback((event: EveningEvent) => {
-    exportToPDF(event);
-    exportToExcel(event);
+  const exportBoth = useCallback(async (event: EveningEvent) => {
+    await exportToPDF(event);
+    await exportToExcel(event);
   }, [exportToPDF, exportToExcel]);
 
   return {
